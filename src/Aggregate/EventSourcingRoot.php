@@ -7,7 +7,7 @@ namespace TinyBlocks\BuildingBlocks\Aggregate;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityConstant;
+use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
 /**
@@ -41,7 +41,7 @@ interface EventSourcingRoot extends AggregateRoot
      *
      * @param Identity $identity The identity to assign to the new aggregate.
      * @return static A new aggregate in its initial state.
-     * @throws MissingIdentityConstant When the <code>IDENTITY</code> class constant is not defined.
+     * @throws MissingIdentityProperty When the property referenced by <code>identityName()</code> does not exist.
      */
     public static function blank(Identity $identity): static;
 
@@ -56,7 +56,7 @@ interface EventSourcingRoot extends AggregateRoot
      * @param iterable<EventRecord> $records The event stream to replay, ordered by sequence number.
      * @param Snapshot|null $snapshot Optional snapshot to restore from before replay.
      * @return static The reconstituted aggregate.
-     * @throws MissingIdentityConstant When the <code>IDENTITY</code> class constant is not defined.
+     * @throws MissingIdentityProperty When the property referenced by <code>identityName()</code> does not exist.
      */
     public static function reconstitute(Identity $identity, iterable $records, ?Snapshot $snapshot = null): static;
 

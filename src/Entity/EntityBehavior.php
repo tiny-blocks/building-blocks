@@ -4,18 +4,15 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Entity;
 
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityConstant;
 use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
 
 trait EntityBehavior
 {
+    abstract protected function identityName(): string;
+
     public function getIdentityName(): string
     {
-        if (!defined('static::IDENTITY')) {
-            throw new MissingIdentityConstant(className: static::class);
-        }
-
-        $name = static::IDENTITY;
+        $name = $this->identityName();
 
         if (!property_exists($this, $name)) {
             throw new MissingIdentityProperty(propertyName: $name, className: static::class);

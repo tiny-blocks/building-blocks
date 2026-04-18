@@ -7,9 +7,7 @@ namespace Test\TinyBlocks\BuildingBlocks\Aggregate;
 use PHPUnit\Framework\TestCase;
 use Test\TinyBlocks\BuildingBlocks\Models\Cart;
 use Test\TinyBlocks\BuildingBlocks\Models\CartId;
-use Test\TinyBlocks\BuildingBlocks\Models\CartWithoutIdentityConstant;
 use Test\TinyBlocks\BuildingBlocks\Models\ProductAdded;
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityConstant;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
 final class EventSourcingRootBehaviorTest extends TestCase
@@ -260,17 +258,6 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
         /** @Then the sequence number reflects the last applied event */
         self::assertSame(2, $reconstituted->getSequenceNumber()->value);
-    }
-
-    public function testBlankThrowsWhenIdentityConstantIsMissing(): void
-    {
-        /** @Given an event-sourced aggregate class omitting the IDENTITY constant */
-        /** @Then a MissingIdentityConstant exception carrying the class name is thrown */
-        $this->expectException(MissingIdentityConstant::class);
-        $this->expectExceptionMessage(CartWithoutIdentityConstant::class);
-
-        /** @When creating a blank aggregate */
-        CartWithoutIdentityConstant::blank(identity: new CartId(value: 'cart-missing'));
     }
 
     public function testReconstitutedAggregateHasNoRecordedEvents(): void

@@ -26,7 +26,7 @@ trait EventualAggregateRootBehavior
         $this->recordedEvents = EventRecords::createFromEmpty();
     }
 
-    protected function pushEvent(DomainEvent $event, Revision $revision): void
+    protected function push(DomainEvent $event, Revision $revision): void
     {
         $this->nextSequenceNumber();
         $this->recordedEvents = ($this->recordedEvents ?? EventRecords::createFromEmpty())

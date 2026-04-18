@@ -6,12 +6,15 @@ namespace TinyBlocks\BuildingBlocks\Upcast;
 
 use TinyBlocks\BuildingBlocks\Event\EventType;
 use TinyBlocks\BuildingBlocks\Event\Revision;
+use TinyBlocks\Mapper\ObjectMapper;
+use TinyBlocks\Mapper\ObjectMappability;
 use TinyBlocks\Vo\ValueObject;
 use TinyBlocks\Vo\ValueObjectBehavior;
 
-final readonly class IntermediateEvent implements ValueObject
+final readonly class IntermediateEvent implements ValueObject, ObjectMapper
 {
     use ValueObjectBehavior;
+    use ObjectMappability;
 
     public function __construct(
         public EventType $type,

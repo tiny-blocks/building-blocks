@@ -13,9 +13,6 @@ final class Cart implements EventSourcingRoot
 {
     use EventSourcingRootBehavior;
 
-    private const string IDENTITY = 'cartId';
-    private const int MODEL_VERSION = 1;
-
     private CartId $cartId;
 
     /** @var list<string> */
@@ -23,7 +20,7 @@ final class Cart implements EventSourcingRoot
 
     public function addProduct(string $productId): void
     {
-        $this->when(event: new ProductAdded(productId: $productId), revision: new Revision(value: 1));
+        $this->when(event: new ProductAdded(productId: $productId), revision: Revision::initial());
     }
 
     public function applySnapshot(Snapshot $snapshot): void
@@ -38,6 +35,16 @@ final class Cart implements EventSourcingRoot
     public function getProductIds(): array
     {
         return $this->productIds;
+    }
+
+    protected function identityName(): string
+    {
+        return 'cartId';
+    }
+
+    protected function modelVersion(): int
+    {
+        return 1;
     }
 
     protected function whenProductAdded(ProductAdded $event): void

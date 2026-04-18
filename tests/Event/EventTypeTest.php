@@ -7,12 +7,23 @@ namespace Test\TinyBlocks\BuildingBlocks\Event;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderPlaced;
 use TinyBlocks\BuildingBlocks\Event\EventType;
 use TinyBlocks\BuildingBlocks\Internal\Exceptions\InvalidEventType;
 
 final class EventTypeTest extends TestCase
 {
+    public function testConstructorIsPrivate(): void
+    {
+        /** @Given the EventType class constructor */
+        $constructor = new ReflectionMethod(EventType::class, '__construct');
+
+        /** @When inspecting its visibility */
+        /** @Then the constructor is private */
+        self::assertTrue($constructor->isPrivate());
+    }
+
     public function testFromEventUsesTheShortClassNameOfTheDomainEvent(): void
     {
         /** @Given a domain event instance */
@@ -66,7 +77,7 @@ final class EventTypeTest extends TestCase
     }
 
     #[DataProvider('invalidPatterns')]
-    public function testConstructorRejectsValuesNotMatchingPattern(string $invalidValue): void
+    public function testFromStringRejectsValuesNotMatchingPattern(string $invalidValue): void
     {
         /** @Given a value that violates the event-type pattern */
         /** @Then an InvalidEventType exception mentioning the pattern is thrown */
@@ -74,7 +85,7 @@ final class EventTypeTest extends TestCase
         $this->expectExceptionMessage('does not match the required pattern');
 
         /** @When constructing with the invalid value */
-        new EventType(value: $invalidValue);
+        EventType::fromString(value: $invalidValue);
     }
 
     public function testInvalidEventTypeIsCatchableAsInvalidArgumentException(): void
@@ -84,7 +95,7 @@ final class EventTypeTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         /** @When constructing with an invalid value */
-        new EventType(value: 'invalid');
+        EventType::fromString(value: 'invalid');
     }
 
     public function testInvalidEventTypeCarriesTheOffendingValue(): void
@@ -95,7 +106,7 @@ final class EventTypeTest extends TestCase
         $this->expectExceptionMessage('lowercaseStart');
 
         /** @When constructing with an invalid value */
-        new EventType(value: 'lowercaseStart');
+        EventType::fromString(value: 'lowercaseStart');
     }
 
     /**

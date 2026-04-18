@@ -17,7 +17,7 @@ final class SingleUpcasterBehaviorTest extends TestCase
         /** @Given a ProductAdded event at revision 1 */
         $event = new IntermediateEvent(
             type: EventType::fromString(value: 'ProductAdded'),
-            revision: new Revision(value: 1),
+            revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
         );
 
@@ -33,7 +33,7 @@ final class SingleUpcasterBehaviorTest extends TestCase
         /** @Given a ProductAdded event at revision 1 */
         $event = new IntermediateEvent(
             type: EventType::fromString(value: 'ProductAdded'),
-            revision: new Revision(value: 1),
+            revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
         );
 
@@ -49,7 +49,7 @@ final class SingleUpcasterBehaviorTest extends TestCase
         /** @Given an event whose type is not the one the upcaster handles */
         $event = new IntermediateEvent(
             type: EventType::fromString(value: 'OrderPlaced'),
-            revision: new Revision(value: 1),
+            revision: Revision::initial(),
             serializedEvent: ['item' => 'book']
         );
 
@@ -65,7 +65,7 @@ final class SingleUpcasterBehaviorTest extends TestCase
         /** @Given a ProductAdded event at revision 2, past the upcaster's FROM_REVISION */
         $event = new IntermediateEvent(
             type: EventType::fromString(value: 'ProductAdded'),
-            revision: new Revision(value: 2),
+            revision: Revision::of(value: 2),
             serializedEvent: ['productId' => 'prod-1', 'quantity' => 1]
         );
 

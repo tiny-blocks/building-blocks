@@ -24,10 +24,10 @@ final class EventRecordTest extends TestCase
         $orderId = new OrderId(value: 'ord-1');
         $placedEvent = new OrderPlaced(item: 'book');
         $eventType = EventType::fromString(value: 'OrderPlaced');
-        $revision = new Revision(value: 1);
+        $revision = Revision::initial();
         $occurredOn = Instant::now();
         $snapshotData = new SnapshotData(data: ['status' => 'placed']);
-        $sequenceNumber = new SequenceNumber(value: 1);
+        $sequenceNumber = SequenceNumber::first();
 
         /** @When constructing the EventRecord */
         $record = new EventRecord(
@@ -61,10 +61,10 @@ final class EventRecordTest extends TestCase
         $orderId = new OrderId(value: 'ord-1');
         $placedEvent = new OrderPlaced(item: 'book');
         $eventType = EventType::fromString(value: 'OrderPlaced');
-        $revision = new Revision(value: 1);
+        $revision = Revision::initial();
         $occurredOn = Instant::now();
         $snapshotData = new SnapshotData(data: []);
-        $sequenceNumber = new SequenceNumber(value: 1);
+        $sequenceNumber = SequenceNumber::first();
 
         /** @And two records constructed from those identical values */
         $first = new EventRecord(
@@ -103,10 +103,10 @@ final class EventRecordTest extends TestCase
         $orderId = new OrderId(value: 'ord-1');
         $placedEvent = new OrderPlaced(item: 'book');
         $eventType = EventType::fromString(value: 'OrderPlaced');
-        $revision = new Revision(value: 1);
+        $revision = Revision::initial();
         $occurredOn = Instant::now();
         $snapshotData = new SnapshotData(data: []);
-        $sequenceNumber = new SequenceNumber(value: 1);
+        $sequenceNumber = SequenceNumber::first();
 
         /** @And two records with different UUIDs */
         $first = new EventRecord(

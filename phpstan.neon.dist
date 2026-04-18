@@ -11,4 +11,6 @@ parameters:
     - '#destructuring on mixed#'
     - identifier: trait.unused
     - '#expects int<1, max>#'
+    - message: '#Upcasters::chain\(\) should return#'
+      path: src/Upcast/Upcasters.php
   reportUnmatchedIgnoredErrors: false

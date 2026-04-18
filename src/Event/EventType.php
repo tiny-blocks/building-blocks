@@ -15,7 +15,7 @@ final readonly class EventType implements ValueObject
 
     private const string PATTERN = '/^[A-Z][A-Za-z0-9]+$/';
 
-    public function __construct(public string $value)
+    private function __construct(public string $value)
     {
         if (!preg_match(pattern: self::PATTERN, subject: $value)) {
             throw new InvalidEventType(value: $value, pattern: self::PATTERN);
