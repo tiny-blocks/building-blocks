@@ -12,7 +12,7 @@ final readonly class SequenceNumber implements ValueObject
 {
     use ValueObjectBehavior;
 
-    public function __construct(public int $value)
+    private function __construct(public int $value)
     {
         if ($value < 0) {
             throw new InvalidSequenceNumber(value: $value);
@@ -27,6 +27,11 @@ final readonly class SequenceNumber implements ValueObject
     public static function first(): SequenceNumber
     {
         return new SequenceNumber(value: 1);
+    }
+
+    public static function of(int $value): SequenceNumber
+    {
+        return new SequenceNumber(value: $value);
     }
 
     public function next(): SequenceNumber

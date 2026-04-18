@@ -9,8 +9,6 @@ use Test\TinyBlocks\BuildingBlocks\Models\AppointmentId;
 use Test\TinyBlocks\BuildingBlocks\Models\Order;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderWithMissingIdentityProperty;
-use Test\TinyBlocks\BuildingBlocks\Models\OrderWithoutIdentityConstant;
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityConstant;
 use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
 
 final class EntityBehaviorTest extends TestCase
@@ -38,7 +36,7 @@ final class EntityBehaviorTest extends TestCase
         /** @When retrieving the identity property name */
         $name = $order->getIdentityName();
 
-        /** @Then it matches the IDENTITY constant value */
+        /** @Then it matches the value returned by identityName() */
         self::assertSame('orderId', $name);
     }
 
@@ -126,22 +124,9 @@ final class EntityBehaviorTest extends TestCase
         self::assertFalse($result);
     }
 
-    public function testShipThrowsWhenIdentityConstantIsMissing(): void
-    {
-        /** @Given an aggregate whose class omits the IDENTITY constant */
-        $order = new OrderWithoutIdentityConstant();
-
-        /** @Then a MissingIdentityConstant exception carrying the class name is thrown */
-        $this->expectException(MissingIdentityConstant::class);
-        $this->expectExceptionMessage(OrderWithoutIdentityConstant::class);
-
-        /** @When shipping the order and indirectly reaching identity resolution */
-        $order->ship();
-    }
-
     public function testShipThrowsWhenIdentityPropertyIsMissing(): void
     {
-        /** @Given an aggregate whose IDENTITY points to a non-existent property */
+        /** @Given an aggregate whose identityName() points to a non-existent property */
         $order = new OrderWithMissingIdentityProperty();
 
         /** @Then a MissingIdentityProperty exception carrying the property name is thrown */

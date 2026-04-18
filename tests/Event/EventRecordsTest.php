@@ -41,11 +41,11 @@ final class EventRecordsTest extends TestCase
             type: EventType::fromString(value: 'OrderPlaced'),
             event: new OrderPlaced(item: 'book'),
             identity: new OrderId(value: 'ord-1'),
-            revision: new Revision(value: 1),
+            revision: Revision::initial(),
             occurredOn: Instant::now(),
             snapshotData: new SnapshotData(data: []),
             aggregateType: 'Order',
-            sequenceNumber: new SequenceNumber(value: 1)
+            sequenceNumber: SequenceNumber::first()
         );
 
         /** @When adding the record */
@@ -63,11 +63,11 @@ final class EventRecordsTest extends TestCase
             type: EventType::fromString(value: 'OrderPlaced'),
             event: new OrderPlaced(item: 'book'),
             identity: new OrderId(value: 'ord-1'),
-            revision: new Revision(value: 1),
+            revision: Revision::initial(),
             occurredOn: Instant::now(),
             snapshotData: new SnapshotData(data: []),
             aggregateType: 'Order',
-            sequenceNumber: new SequenceNumber(value: 1)
+            sequenceNumber: SequenceNumber::first()
         );
         $records = EventRecords::createFromEmpty()->add($record);
 

@@ -20,7 +20,7 @@ trait SingleUpcasterBehavior
 
         return $event
             ->withSerializedEvent(serializedEvent: $this->doUpcast(data: $event->serializedEvent))
-            ->withRevision(revision: new Revision(value: static::TO_REVISION));
+            ->withRevision(revision: Revision::of(value: static::TO_REVISION));
     }
 
     abstract protected function doUpcast(array $data): array;

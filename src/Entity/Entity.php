@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Entity;
 
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityConstant;
 use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
 
 /**
@@ -14,8 +13,8 @@ use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
  * across distinct representations and lifecycle transitions. Two entities are equal when their
  * identities are equal, regardless of attribute differences.</p>
  *
- * <p>Concrete entities declare the <code>IDENTITY</code> class constant pointing to the property that
- * holds their {@see Identity}. The default behavior uses reflection to resolve and compare it.</p>
+ * <p>Concrete entities implement the protected <code>identityName()</code> method returning the property
+ * that holds their {@see Identity}. The default behavior uses reflection to resolve and compare it.</p>
  *
  * @see Eric Evans, <em>Domain-Driven Design: Tackling Complexity in the Heart of Software</em>
  *      (Addison-Wesley, 2003), Chapter 5 "Entities (a.k.a. Reference Objects)".
@@ -26,17 +25,15 @@ interface Entity
      * Returns the Identity that uniquely identifies this entity.
      *
      * @return Identity The identity instance held by this entity.
-     * @throws MissingIdentityConstant When the <code>IDENTITY</code> class constant is not defined.
-     * @throws MissingIdentityProperty When the property referenced by <code>IDENTITY</code> does not exist.
+     * @throws MissingIdentityProperty When the property referenced by <code>identityName()</code> does not exist.
      */
     public function getIdentity(): Identity;
 
     /**
      * Returns the name of the property that holds this entity's Identity.
      *
-     * @return string The property name, resolved from the <code>IDENTITY</code> class constant.
-     * @throws MissingIdentityConstant When the <code>IDENTITY</code> class constant is not defined.
-     * @throws MissingIdentityProperty When the property referenced by <code>IDENTITY</code> does not exist.
+     * @return string The property name, resolved from <code>identityName()</code>.
+     * @throws MissingIdentityProperty When the property referenced by <code>identityName()</code> does not exist.
      */
     public function getIdentityName(): string;
 

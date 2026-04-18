@@ -28,11 +28,7 @@ trait AggregateRootBehavior
 
     public function getModelVersion(): SequenceNumber
     {
-        if (!defined('static::MODEL_VERSION')) {
-            return new SequenceNumber(value: 0);
-        }
-
-        return new SequenceNumber(value: static::MODEL_VERSION);
+        return SequenceNumber::of(value: $this->modelVersion());
     }
 
     public function buildAggregateName(): string
@@ -40,9 +36,22 @@ trait AggregateRootBehavior
         return new ReflectionClass(objectOrClass: static::class)->getShortName();
     }
 
+    protected function modelVersion(): int
+    {
+        return 0;
+    }
+
     protected function nextSequenceNumber(): void
     {
         $this->sequenceNumber = $this->getSequenceNumber()->next();
+    }
+
+    protected function generateSnapshotData(): SnapshotData
+    {
+        $state = get_object_vars($this);
+        unset($state['recordedEvents']);
+
+        return new SnapshotData(data: $state);
     }
 
     protected function buildEventRecord(DomainEvent $event, Revision $revision): EventRecord
@@ -58,13 +67,5 @@ trait AggregateRootBehavior
             aggregateType: $this->buildAggregateName(),
             sequenceNumber: $this->getSequenceNumber()
         );
-    }
-
-    protected function generateSnapshotData(): SnapshotData
-    {
-        $state = get_object_vars($this);
-        unset($state['recordedEvents']);
-
-        return new SnapshotData(data: $state);
     }
 }

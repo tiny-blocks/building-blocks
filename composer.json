@@ -19,6 +19,7 @@
         "ramsey/uuid": "^4.9",
         "tiny-blocks/collection": "^2.3",
         "tiny-blocks/immutable-object": "^1.1",
+        "tiny-blocks/mapper": "^2.0",
         "tiny-blocks/time": "^1.5",
         "tiny-blocks/value-object": "^3.2"
     },

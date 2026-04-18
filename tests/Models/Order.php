@@ -12,8 +12,6 @@ final class Order implements EventualAggregateRoot
 {
     use EventualAggregateRootBehavior;
 
-    private const string IDENTITY = 'orderId';
-
     private string $status = 'draft';
 
     private function __construct(private OrderId $orderId)
@@ -24,7 +22,7 @@ final class Order implements EventualAggregateRoot
     {
         $order = new Order(orderId: $orderId);
         $order->status = 'placed';
-        $order->pushEvent(event: new OrderPlaced(item: $item), revision: new Revision(value: 1));
+        $order->push(event: new OrderPlaced(item: $item), revision: Revision::initial());
 
         return $order;
     }
@@ -32,11 +30,16 @@ final class Order implements EventualAggregateRoot
     public function ship(string $carrier): void
     {
         $this->status = 'shipped';
-        $this->pushEvent(event: new OrderShipped(carrier: $carrier), revision: new Revision(value: 1));
+        $this->push(event: new OrderShipped(carrier: $carrier), revision: Revision::initial());
     }
 
     public function getStatus(): string
     {
         return $this->status;
+    }
+
+    protected function identityName(): string
+    {
+        return 'orderId';
     }
 }

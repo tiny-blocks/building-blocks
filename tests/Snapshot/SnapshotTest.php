@@ -121,7 +121,7 @@ final class SnapshotTest extends TestCase
     public function testEqualsReturnsTrueForIdenticallyBuiltSnapshots(): void
     {
         /** @Given shared fields for two snapshots */
-        $sequenceNumber = new SequenceNumber(value: 1);
+        $sequenceNumber = SequenceNumber::first();
         $createdAt = Instant::now();
 
         /** @And two snapshots built from those identical fields */
@@ -150,7 +150,7 @@ final class SnapshotTest extends TestCase
     public function testEqualsReturnsFalseWhenAnyFieldDiffers(): void
     {
         /** @Given two snapshots that differ only by type */
-        $sequenceNumber = new SequenceNumber(value: 1);
+        $sequenceNumber = SequenceNumber::first();
         $createdAt = Instant::now();
 
         /** @And the two snapshots constructed accordingly */

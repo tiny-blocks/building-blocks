@@ -12,7 +12,6 @@ use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
 use TinyBlocks\BuildingBlocks\Event\Revision;
 use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityConstant;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
 trait EventSourcingRootBehavior
@@ -30,12 +29,9 @@ trait EventSourcingRootBehavior
 
     public static function blank(Identity $identity): static
     {
-        if (!defined('static::IDENTITY')) {
-            throw new MissingIdentityConstant(className: static::class);
-        }
-
         $aggregate = new ReflectionClass(objectOrClass: static::class)->newInstanceWithoutConstructor();
-        new ReflectionProperty($aggregate, static::IDENTITY)->setValue(objectOrValue: $aggregate, value: $identity);
+        new ReflectionProperty($aggregate, $aggregate->identityName())
+            ->setValue(objectOrValue: $aggregate, value: $identity);
         $aggregate->sequenceNumber = SequenceNumber::initial();
         $aggregate->recordedEvents = EventRecords::createFromEmpty();
 

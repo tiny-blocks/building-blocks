@@ -11,6 +11,11 @@
     + [Event sourcing](#event-sourcing)
     + [Snapshots](#snapshots)
     + [Upcasting](#upcasting)
+        - [Defining an upcaster](#defining-an-upcaster)
+        - [Upcasting an event](#upcasting-an-event)
+        - [Chaining upcasters](#chaining-upcasters)
+        - [Reconstituting from an iterable](#reconstituting-from-an-iterable)
+        - [Default values for new fields](#default-values-for-new-fields)
 * [FAQ](#faq)
 * [License](#license)
 * [Contributing](#contributing)
@@ -19,10 +24,7 @@
 
 The `Building Blocks` library provides the tactical design building blocks of Domain-Driven Design: `Entity`,
 `Identity`, `AggregateRoot`, and the infrastructure required to carry domain events through a transactional outbox
-or an event-sourced store.
-
-It is persistence-agnostic and framework-agnostic. It depends only on the other `tiny-blocks` primitives
-(`immutable-object`, `value-object`, `collection`, `time`) and `ramsey/uuid` for event identifiers.
+or an event-sourced store. It is persistence-agnostic and framework-agnostic.
 
 Domain events defined here are plain PHP objects fully compatible with any PSR-14 dispatcher. The library does not
 replace PSR-14; it defines what flows through it.
@@ -44,7 +46,8 @@ The library exposes three styles of aggregate modeling through sibling interface
 
 ### Entity
 
-Every entity declares an `IDENTITY` constant pointing to the property that holds its `Identity`.
+Every entity implements a protected `identityName()` method returning the name of the property that holds its
+`Identity`.
 
 #### Single-field identity
 
@@ -93,7 +96,7 @@ Every entity declares an `IDENTITY` constant pointing to the property that holds
 #### Identity access
 
 * `getIdentity`, `getIdentityValue`, `sameIdentityOf`, `identityEquals`: provided by `EntityBehavior` for any entity
-  that declares the `IDENTITY` constant.
+  that implements `identityName()`.
 
   ```php
   use TinyBlocks\BuildingBlocks\Aggregate\AggregateRoot;
@@ -103,10 +106,13 @@ Every entity declares an `IDENTITY` constant pointing to the property that holds
   {
       use AggregateRootBehavior;
 
-      private const string IDENTITY = 'userId';
-
       private function __construct(private UserId $userId, private string $email)
       {
+      }
+
+      protected function identityName(): string
+      {
+          return 'userId';
       }
   }
 
@@ -129,21 +135,31 @@ control and a `ModelVersion` for schema evolution of the aggregate type itself.
   {
       use AggregateRootBehavior;
 
-      private const string IDENTITY = 'userId';
+      protected function identityName(): string
+      {
+          return 'userId';
+      }
   }
 
   $user->getSequenceNumber();
   ```
 
-* `getModelVersion`: resolved from the optional `MODEL_VERSION` class constant, defaults to zero when absent.
+* `getModelVersion`: resolved from the protected `modelVersion()` method, defaults to zero when not overridden.
 
   ```php
   final class Cart implements AggregateRoot
   {
       use AggregateRootBehavior;
 
-      private const string IDENTITY = 'cartId';
-      private const int MODEL_VERSION = 1;
+      protected function identityName(): string
+      {
+          return 'cartId';
+      }
+
+      protected function modelVersion(): int
+      {
+          return 1;
+      }
   }
 
   $cart->getModelVersion();
@@ -177,7 +193,7 @@ emitted as side effects and must be delivered at-least-once.
 
 #### Emitting events from the aggregate
 
-* `pushEvent`: protected method on `EventualAggregateRootBehavior`. Increments the sequence number and appends a
+* `push`: protected method on `EventualAggregateRootBehavior`. Increments the sequence number and appends a
   fully-built `EventRecord` to the recorded buffer. The `Revision` is provided on the call site, so the event class
   stays pure.
 
@@ -190,8 +206,6 @@ emitted as side effects and must be delivered at-least-once.
   {
       use EventualAggregateRootBehavior;
 
-      private const string IDENTITY = 'orderId';
-
       private function __construct(private OrderId $orderId)
       {
       }
@@ -199,9 +213,14 @@ emitted as side effects and must be delivered at-least-once.
       public static function place(OrderId $orderId, string $item): Order
       {
           $order = new Order(orderId: $orderId);
-          $order->pushEvent(event: new OrderPlaced(item: $item), revision: new Revision(value: 1));
+          $order->push(event: new OrderPlaced(item: $item), revision: Revision::initial());
 
           return $order;
+      }
+
+      protected function identityName(): string
+      {
+          return 'orderId';
       }
   }
   ```
@@ -240,19 +259,22 @@ emitted as side effects and must be delivered at-least-once.
   {
       use EventSourcingRootBehavior;
 
-      private const string IDENTITY = 'cartId';
-
       private CartId $cartId;
       private array $productIds = [];
 
       public function addProduct(string $productId): void
       {
-          $this->when(event: new ProductAdded(productId: $productId), revision: new Revision(value: 1));
+          $this->when(event: new ProductAdded(productId: $productId), revision: Revision::initial());
       }
 
       public function applySnapshot(Snapshot $snapshot): void
       {
           $this->productIds = $snapshot->getAggregateState()['productIds'] ?? [];
+      }
+
+      protected function identityName(): string
+      {
+          return 'cartId';
       }
 
       protected function whenProductAdded(ProductAdded $event): void
@@ -383,11 +405,45 @@ Upcasters migrate serialized events across schema changes without touching the e
 
   $event = new IntermediateEvent(
       type: EventType::fromString(value: 'ProductAdded'),
-      revision: new Revision(value: 1),
+      revision: Revision::initial(),
       serializedEvent: ['productId' => 'prod-1']
   );
 
   $upcasted = new ProductV1Upcaster()->upcast(event: $event);
+  ```
+
+#### Chaining upcasters
+
+* `Upcasters`: ordered collection of `Upcaster` instances. `chain` folds them left-to-right over an
+  `IntermediateEvent`, applying each upcaster in sequence. Upcasters that do not match the current `(type, revision)`
+  pair pass the event through unchanged.
+
+  ```php
+  use TinyBlocks\BuildingBlocks\Upcast\Upcasters;
+
+  $upcasters = Upcasters::createFrom(elements: [
+      new ProductV1Upcaster(),
+      new ProductV2Upcaster(),
+  ]);
+
+  $upcasted = $upcasters->chain(event: $event);
+  ```
+
+#### Reconstituting from an iterable
+
+* `IntermediateEvent` implements `ObjectMapper`, so it can be reconstituted from an iterable of typed field values.
+  Pass already-constructed `EventType` and `Revision` instances — the mapper maps each field by name.
+
+  ```php
+  use TinyBlocks\BuildingBlocks\Event\EventType;
+  use TinyBlocks\BuildingBlocks\Event\Revision;
+  use TinyBlocks\BuildingBlocks\Upcast\IntermediateEvent;
+
+  $event = IntermediateEvent::fromIterable(iterable: [
+      'type' => EventType::fromString(value: 'ProductAdded'),
+      'revision' => Revision::of(value: 2),
+      'serializedEvent' => ['productId' => 'prod-1', 'quantity' => 1],
+  ]);
   ```
 
 #### Default values for new fields
@@ -412,7 +468,7 @@ the event itself. Keeping the event pure prevents infrastructure concerns from l
 
 Only the aggregate has the context needed to build the complete envelope: identity, sequence number, aggregate type
 name. Storing raw events and wrapping them later would either duplicate that context or require a second pass.
-`pushEvent` builds the full `EventRecord` immediately, and the outbox adapter reads them as-is with no translation.
+`push` builds the full `EventRecord` immediately, and the outbox adapter reads them as-is with no translation.
 
 ### 03. Why are `EventualAggregateRoot` and `EventSourcingRoot` siblings instead of a hierarchy?
 
@@ -422,7 +478,7 @@ would imply the two patterns can coexist on the same aggregate, which they canno
 
 ### 04. Why does `Revision` live on the call site instead of on the event class?
 
-Keeping `Revision` on the `pushEvent` or `when` call site makes the aggregate the author of schema evolution. The
+Keeping `Revision` on the `push` or `when` call site makes the aggregate the author of schema evolution. The
 event class stays pure. Bumping the revision of an existing event does not require creating a new class.
 
 ### 05. Why does `blank` skip the constructor?
@@ -440,10 +496,27 @@ consumers to decide which copy is authoritative.
 
 ### 07. Why are custom exceptions declared under `Internal\Exceptions` instead of the root namespace?
 
-Custom exceptions such as `InvalidEventType`, `InvalidRevision`, `InvalidSequenceNumber`, `MissingIdentityConstant`
-and `MissingIdentityProperty` are implementation details. They extend `InvalidArgumentException` or
+Custom exceptions such as `InvalidEventType`, `InvalidRevision`, `InvalidSequenceNumber`, and
+`MissingIdentityProperty` are implementation details. They extend `InvalidArgumentException` or
 `RuntimeException` from the PHP standard library, so consumers that catch the broad standard types continue to work;
 consumers that need precise handling can catch the specific classes.
+
+### 08. Why did `IDENTITY` and `MODEL_VERSION` move from constants to methods?
+
+Class constants read by reflection inside traits are invisible to static analyzers such as PHPStan and Psalm. Every
+concrete aggregate had to annotate `@phpstan-ignore-next-line` or equivalent suppressions just to satisfy level-9
+analysis. Replacing them with a protected `identityName(): string` method and a protected `modelVersion(): int`
+method makes the contract explicit in PHP's type system: the compiler enforces implementation, IDEs can navigate to
+it, and static analyzers raise no warnings — in the library or at consumer sites.
+
+### 09. Why do `Revision`, `SequenceNumber`, and `EventType` now have private constructors?
+
+These value objects have named static factories that carry semantic meaning: `Revision::initial()` communicates
+"first schema revision", `SequenceNumber::first()` communicates "first recorded event", and
+`EventType::fromEvent($event)` communicates "derive the type name from this event". Leaving the constructor public
+allowed `new Revision(value: 1)` at call sites, which bypasses the semantic intent and mixes raw construction with
+factory conventions. A private constructor forces all creation through the factories, making the intent visible at
+every call site. The `of()` factory on `Revision` and `SequenceNumber` covers the loading-from-persistence path.
 
 ## License
 

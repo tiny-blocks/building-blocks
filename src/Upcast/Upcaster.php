@@ -16,6 +16,8 @@ namespace TinyBlocks\BuildingBlocks\Upcast;
  * <code>(EXPECTED_EVENT_TYPE, FROM_REVISION, TO_REVISION)</code> triple through class constants and
  * delegates the payload transformation to an abstract <code>doUpcast()</code> hook.</p>
  *
+ * <p>To apply a sequence of upcasters in order, use {@see Upcasters::chain}.</p>
+ *
  * @see Greg Young, <em>Versioning in an Event Sourced System</em> (Leanpub, 2017),
  *      "Basic Type Based Conversion" and "Upcasting".
  */

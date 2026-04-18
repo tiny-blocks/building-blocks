@@ -12,10 +12,13 @@ final class OrderWithMissingIdentityProperty implements EventualAggregateRoot
 {
     use EventualAggregateRootBehavior;
 
-    private const string IDENTITY = 'nonExistentProperty';
-
     public function ship(): void
     {
-        $this->pushEvent(event: new OrderShipped(carrier: 'DHL'), revision: new Revision(value: 1));
+        $this->push(event: new OrderShipped(carrier: 'DHL'), revision: Revision::initial());
+    }
+
+    protected function identityName(): string
+    {
+        return 'nonExistentProperty';
     }
 }
