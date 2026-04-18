@@ -1,0 +1,70 @@
+{
+    "name": "tiny-blocks/building-blocks",
+    "description": "Tactical DDD building blocks for PHP: Entity, Aggregate Root, and domain events with transactional outbox and event sourcing support. Persistence-agnostic and PSR-14 friendly.",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Gustavo Freze de Araujo Santos",
+            "homepage": "https://github.com/gustavofreze"
+        }
+    ],
+    "homepage": "https://github.com/tiny-blocks/building-blocks",
+    "support": {
+        "issues": "https://github.com/tiny-blocks/building-blocks/issues",
+        "source": "https://github.com/tiny-blocks/building-blocks"
+    },
+    "require": {
+        "php": "^8.5",
+        "ramsey/uuid": "^4.9",
+        "tiny-blocks/collection": "^2.3",
+        "tiny-blocks/immutable-object": "^1.1",
+        "tiny-blocks/time": "^1.5",
+        "tiny-blocks/value-object": "^3.2"
+    },
+    "require-dev": {
+        "ergebnis/composer-normalize": "^2.51",
+        "infection/infection": "^0.32",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^13.1",
+        "squizlabs/php_codesniffer": "^4.0"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "TinyBlocks\\BuildingBlocks\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Test\\TinyBlocks\\BuildingBlocks\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "ergebnis/composer-normalize": true,
+            "infection/extension-installer": true
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "mutation-test": "php ./vendor/bin/infection --threads=max --logger-html=report/coverage/mutation-report.html --coverage=report/coverage",
+        "phpcs": "php ./vendor/bin/phpcs --standard=PSR12 --extensions=php ./src",
+        "phpstan": "php ./vendor/bin/phpstan analyse -c phpstan.neon.dist --quiet --no-progress",
+        "review": [
+            "@phpcs",
+            "@phpstan"
+        ],
+        "test": "php -d memory_limit=2G ./vendor/bin/phpunit --configuration phpunit.xml tests",
+        "test-file": "php ./vendor/bin/phpunit --configuration phpunit.xml --no-coverage --filter",
+        "test-no-coverage": "php ./vendor/bin/phpunit --configuration phpunit.xml --no-coverage tests",
+        "tests": [
+            "@test",
+            "@mutation-test"
+        ],
+        "tests-no-coverage": [
+            "@test-no-coverage"
+        ]
+    }
+}
