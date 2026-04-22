@@ -62,10 +62,10 @@ final class RevisionTest extends TestCase
         $second = Revision::of(value: 2);
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are equal */
-        self::assertTrue($result);
+        self::assertTrue($areEqual);
     }
 
     public function testEqualsReturnsFalseForDifferentRevisions(): void
@@ -77,10 +77,10 @@ final class RevisionTest extends TestCase
         $second = Revision::of(value: 2);
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are not equal */
-        self::assertFalse($result);
+        self::assertFalse($areEqual);
     }
 
     #[DataProvider('invalidValues')]
@@ -89,7 +89,7 @@ final class RevisionTest extends TestCase
         /** @Given a value that violates the revision invariant */
         /** @Then an InvalidRevision exception carrying the invalid value is thrown */
         $this->expectException(InvalidRevision::class);
-        $this->expectExceptionMessage((string) $invalidValue);
+        $this->expectExceptionMessage((string)$invalidValue);
 
         /** @When constructing with a non-positive value */
         Revision::of(value: $invalidValue);
@@ -122,7 +122,7 @@ final class RevisionTest extends TestCase
     public static function invalidValues(): array
     {
         return [
-            'zero'         => [0],
+            'zero' => [0],
             'negative one' => [-1],
             'negative ten' => [-10]
         ];

@@ -14,7 +14,7 @@ namespace TinyBlocks\BuildingBlocks\Upcast;
  *
  * <p>The shipped {@see SingleUpcasterBehavior} trait binds an upcaster to a specific
  * <code>(EXPECTED_EVENT_TYPE, FROM_REVISION, TO_REVISION)</code> triple through class constants and
- * delegates the payload transformation to an abstract <code>doUpcast()</code> hook.</p>
+ * delegates the payload transformation to an abstract <code>rewrite()</code> hook.</p>
  *
  * <p>To apply a sequence of upcasters in order, use {@see Upcasters::chain}.</p>
  *

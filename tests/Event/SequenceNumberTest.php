@@ -86,10 +86,10 @@ final class SequenceNumberTest extends TestCase
         $smaller = SequenceNumber::of(value: 5);
 
         /** @When checking if the larger is after the smaller */
-        $result = $larger->isAfter(other: $smaller);
+        $isAfter = $larger->isAfter(other: $smaller);
 
         /** @Then the result is true */
-        self::assertTrue($result);
+        self::assertTrue($isAfter);
     }
 
     public function testIsAfterReturnsFalseWhenEqual(): void
@@ -101,10 +101,10 @@ final class SequenceNumberTest extends TestCase
         $second = SequenceNumber::of(value: 3);
 
         /** @When checking if one is strictly after the other */
-        $result = $first->isAfter(other: $second);
+        $isAfter = $first->isAfter(other: $second);
 
         /** @Then the result is false */
-        self::assertFalse($result);
+        self::assertFalse($isAfter);
     }
 
     public function testIsAfterReturnsFalseWhenStrictlySmaller(): void
@@ -116,10 +116,10 @@ final class SequenceNumberTest extends TestCase
         $larger = SequenceNumber::of(value: 8);
 
         /** @When checking if the smaller is after the larger */
-        $result = $smaller->isAfter(other: $larger);
+        $isAfter = $smaller->isAfter(other: $larger);
 
         /** @Then the result is false */
-        self::assertFalse($result);
+        self::assertFalse($isAfter);
     }
 
     public function testEqualsReturnsTrueForSameValue(): void
@@ -131,10 +131,10 @@ final class SequenceNumberTest extends TestCase
         $second = SequenceNumber::of(value: 7);
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are equal */
-        self::assertTrue($result);
+        self::assertTrue($areEqual);
     }
 
     public function testEqualsReturnsFalseForDifferentValues(): void
@@ -146,10 +146,10 @@ final class SequenceNumberTest extends TestCase
         $second = SequenceNumber::of(value: 2);
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are not equal */
-        self::assertFalse($result);
+        self::assertFalse($areEqual);
     }
 
     #[DataProvider('negativeValues')]
@@ -158,7 +158,7 @@ final class SequenceNumberTest extends TestCase
         /** @Given a value that violates the sequence-number invariant */
         /** @Then an InvalidSequenceNumber exception carrying the invalid value is thrown */
         $this->expectException(InvalidSequenceNumber::class);
-        $this->expectExceptionMessage((string) $negativeValue);
+        $this->expectExceptionMessage((string)$negativeValue);
 
         /** @When constructing with a negative value */
         SequenceNumber::of(value: $negativeValue);

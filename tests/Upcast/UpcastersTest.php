@@ -24,10 +24,10 @@ final class UpcastersTest extends TestCase
         );
 
         /** @When chaining through an empty Upcasters collection */
-        $result = Upcasters::createFromEmpty()->chain(event: $event);
+        $chained = Upcasters::createFromEmpty()->chain(event: $event);
 
         /** @Then the event is returned unchanged */
-        self::assertTrue($result->equals(other: $event));
+        self::assertTrue($chained->equals(other: $event));
     }
 
     public function testSingleMatchingUpcasterTransformsEvent(): void
@@ -43,11 +43,11 @@ final class UpcastersTest extends TestCase
         $upcasters = Upcasters::createFrom(elements: [new ProductV1Upcaster()]);
 
         /** @When chaining the event */
-        $result = $upcasters->chain(event: $event);
+        $chained = $upcasters->chain(event: $event);
 
         /** @Then the revision advances to 2 and the payload gains the quantity field */
-        self::assertSame(2, $result->revision->value);
-        self::assertSame(['productId' => 'prod-1', 'quantity' => 1], $result->serializedEvent);
+        self::assertSame(2, $chained->revision->value);
+        self::assertSame(['productId' => 'prod-1', 'quantity' => 1], $chained->serializedEvent);
     }
 
     public function testSingleNonMatchingUpcasterReturnsEventUnchanged(): void
@@ -63,10 +63,10 @@ final class UpcastersTest extends TestCase
         $upcasters = Upcasters::createFrom(elements: [new ProductV1Upcaster()]);
 
         /** @When chaining the event */
-        $result = $upcasters->chain(event: $event);
+        $chained = $upcasters->chain(event: $event);
 
         /** @Then the event is returned unchanged */
-        self::assertTrue($result->equals(other: $event));
+        self::assertTrue($chained->equals(other: $event));
     }
 
     public function testChainedUpcastersApplySequentially(): void
@@ -82,11 +82,11 @@ final class UpcastersTest extends TestCase
         $upcasters = Upcasters::createFrom(elements: [new ProductV1Upcaster(), new ProductV2Upcaster()]);
 
         /** @When chaining the event */
-        $result = $upcasters->chain(event: $event);
+        $chained = $upcasters->chain(event: $event);
 
         /** @Then the revision reaches 3 and both fields are added */
-        self::assertSame(3, $result->revision->value);
-        self::assertSame(['productId' => 'prod-1', 'quantity' => 1, 'notes' => ''], $result->serializedEvent);
+        self::assertSame(3, $chained->revision->value);
+        self::assertSame(['productId' => 'prod-1', 'quantity' => 1, 'notes' => ''], $chained->serializedEvent);
     }
 
     public function testOnlyMatchingUpcastersInChainApply(): void
@@ -102,10 +102,10 @@ final class UpcastersTest extends TestCase
         $upcasters = Upcasters::createFrom(elements: [new ProductV1Upcaster(), new ProductV2Upcaster()]);
 
         /** @When chaining the event */
-        $result = $upcasters->chain(event: $event);
+        $chained = $upcasters->chain(event: $event);
 
         /** @Then only V2 applies: revision advances to 3 and notes is added */
-        self::assertSame(3, $result->revision->value);
-        self::assertSame(['productId' => 'prod-1', 'quantity' => 1, 'notes' => ''], $result->serializedEvent);
+        self::assertSame(3, $chained->revision->value);
+        self::assertSame(['productId' => 'prod-1', 'quantity' => 1, 'notes' => ''], $chained->serializedEvent);
     }
 }

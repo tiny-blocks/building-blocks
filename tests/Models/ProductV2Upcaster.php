@@ -15,8 +15,8 @@ final class ProductV2Upcaster implements Upcaster
     private const int FROM_REVISION = 2;
     private const int TO_REVISION = 3;
 
-    protected function doUpcast(array $data): array
+    protected function rewrite(array $payload): array
     {
-        return [...$data, 'notes' => ''];
+        return [...$payload, 'notes' => ''];
     }
 }

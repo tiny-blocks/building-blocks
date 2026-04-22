@@ -8,11 +8,11 @@ use RuntimeException;
 
 final class MissingIdentityProperty extends RuntimeException
 {
-    public function __construct(public readonly string $propertyName, public readonly string $className)
+    public function __construct(public readonly string $className, public readonly string $propertyName)
     {
         parent::__construct(
-            message: sprintf(
-                'Property <%s> referenced by IDENTITY constant does not exist in <%s>.',
+            sprintf(
+                'Property <%s> referenced by identityName() does not exist in <%s>.',
                 $propertyName,
                 $className
             )

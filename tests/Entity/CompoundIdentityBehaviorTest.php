@@ -30,10 +30,10 @@ final class CompoundIdentityBehaviorTest extends TestCase
         $second = new AppointmentId(tenantId: 'tenant-1', appointmentId: 'apt-1');
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are considered equal */
-        self::assertTrue($result);
+        self::assertTrue($areEqual);
     }
 
     public function testEqualsReturnsFalseWhenTenantDiffers(): void
@@ -45,10 +45,10 @@ final class CompoundIdentityBehaviorTest extends TestCase
         $second = new AppointmentId(tenantId: 'tenant-2', appointmentId: 'apt-1');
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are not equal */
-        self::assertFalse($result);
+        self::assertFalse($areEqual);
     }
 
     public function testEqualsReturnsFalseWhenAppointmentDiffers(): void
@@ -60,9 +60,9 @@ final class CompoundIdentityBehaviorTest extends TestCase
         $second = new AppointmentId(tenantId: 'tenant-1', appointmentId: 'apt-2');
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are not equal */
-        self::assertFalse($result);
+        self::assertFalse($areEqual);
     }
 }

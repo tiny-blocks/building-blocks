@@ -1,6 +1,6 @@
 {
     "name": "tiny-blocks/building-blocks",
-    "description": "Tactical DDD building blocks for PHP: Entity, Aggregate Root, and domain events with transactional outbox and event sourcing support. Persistence-agnostic and PSR-14 friendly.",
+    "description": "Implements tactical DDD building blocks for PHP: entities, aggregate roots, domain events, snapshots, and upcasters.",
     "license": "MIT",
     "type": "library",
     "authors": [
@@ -18,10 +18,9 @@
         "php": "^8.5",
         "ramsey/uuid": "^4.9",
         "tiny-blocks/collection": "^2.3",
-        "tiny-blocks/immutable-object": "^1.1",
         "tiny-blocks/mapper": "^2.0",
         "tiny-blocks/time": "^1.5",
-        "tiny-blocks/value-object": "^3.2"
+        "tiny-blocks/value-object": "^4.0"
     },
     "require-dev": {
         "ergebnis/composer-normalize": "^2.51",

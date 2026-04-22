@@ -22,12 +22,10 @@
 
 ## Overview
 
-The `Building Blocks` library provides the tactical design building blocks of Domain-Driven Design: `Entity`,
-`Identity`, `AggregateRoot`, and the infrastructure required to carry domain events through a transactional outbox
-or an event-sourced store. It is persistence-agnostic and framework-agnostic.
-
-Domain events defined here are plain PHP objects fully compatible with any PSR-14 dispatcher. The library does not
-replace PSR-14; it defines what flows through it.
+Implements tactical DDD building blocks for PHP, covering entities, single and compound identities, aggregate roots,
+domain events, event records, snapshots, and upcasters. Supports both the transactional outbox pattern and event
+sourcing through sibling aggregate variants. Persistence-agnostic and PSR-14 friendly, keeping infrastructure concerns
+out of the domain layer.
 
 ## Installation
 

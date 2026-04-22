@@ -30,6 +30,6 @@ trait EventualAggregateRootBehavior
     {
         $this->nextSequenceNumber();
         $this->recordedEvents = ($this->recordedEvents ?? EventRecords::createFromEmpty())
-            ->add($this->buildEventRecord(event: $event, revision: $revision));
+            ->add(elements: $this->buildEventRecord(event: $event, revision: $revision));
     }
 }

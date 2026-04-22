@@ -26,7 +26,7 @@ final class EventRecordTest extends TestCase
         $eventType = EventType::fromString(value: 'OrderPlaced');
         $revision = Revision::initial();
         $occurredOn = Instant::now();
-        $snapshotData = new SnapshotData(data: ['status' => 'placed']);
+        $snapshotData = new SnapshotData(payload: ['status' => 'placed']);
         $sequenceNumber = SequenceNumber::first();
 
         /** @When constructing the EventRecord */
@@ -63,7 +63,7 @@ final class EventRecordTest extends TestCase
         $eventType = EventType::fromString(value: 'OrderPlaced');
         $revision = Revision::initial();
         $occurredOn = Instant::now();
-        $snapshotData = new SnapshotData(data: []);
+        $snapshotData = new SnapshotData(payload: []);
         $sequenceNumber = SequenceNumber::first();
 
         /** @And two records constructed from those identical values */
@@ -91,10 +91,10 @@ final class EventRecordTest extends TestCase
         );
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are equal */
-        self::assertTrue($result);
+        self::assertTrue($areEqual);
     }
 
     public function testEqualsReturnsFalseForRecordsWithDifferentIdentifiers(): void
@@ -105,7 +105,7 @@ final class EventRecordTest extends TestCase
         $eventType = EventType::fromString(value: 'OrderPlaced');
         $revision = Revision::initial();
         $occurredOn = Instant::now();
-        $snapshotData = new SnapshotData(data: []);
+        $snapshotData = new SnapshotData(payload: []);
         $sequenceNumber = SequenceNumber::first();
 
         /** @And two records with different UUIDs */
@@ -133,9 +133,9 @@ final class EventRecordTest extends TestCase
         );
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are not equal */
-        self::assertFalse($result);
+        self::assertFalse($areEqual);
     }
 }

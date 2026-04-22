@@ -54,10 +54,10 @@ final class SingleUpcasterBehaviorTest extends TestCase
         );
 
         /** @When applying the upcaster */
-        $result = new ProductV1Upcaster()->upcast(event: $event);
+        $upcasted = new ProductV1Upcaster()->upcast(event: $event);
 
         /** @Then the same instance is returned unchanged */
-        self::assertSame($event, $result);
+        self::assertSame($event, $upcasted);
     }
 
     public function testUpcastReturnsUnchangedEventForMismatchedRevision(): void
@@ -70,9 +70,9 @@ final class SingleUpcasterBehaviorTest extends TestCase
         );
 
         /** @When applying the upcaster */
-        $result = new ProductV1Upcaster()->upcast(event: $event);
+        $upcasted = new ProductV1Upcaster()->upcast(event: $event);
 
         /** @Then the same instance is returned unchanged */
-        self::assertSame($event, $result);
+        self::assertSame($event, $upcasted);
     }
 }

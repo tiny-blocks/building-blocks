@@ -73,10 +73,10 @@ final class EntityBehaviorTest extends TestCase
         $second = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'pen');
 
         /** @When comparing their identities */
-        $result = $first->sameIdentityOf(other: $second);
+        $haveSameIdentity = $first->sameIdentityOf(other: $second);
 
         /** @Then the comparison yields true */
-        self::assertTrue($result);
+        self::assertTrue($haveSameIdentity);
     }
 
     public function testSameIdentityOfReturnsFalseForAggregatesWithDifferentIdentity(): void
@@ -88,10 +88,10 @@ final class EntityBehaviorTest extends TestCase
         $second = Order::place(orderId: new OrderId(value: 'ord-2'), item: 'pen');
 
         /** @When comparing their identities */
-        $result = $first->sameIdentityOf(other: $second);
+        $haveSameIdentity = $first->sameIdentityOf(other: $second);
 
         /** @Then the comparison yields false */
-        self::assertFalse($result);
+        self::assertFalse($haveSameIdentity);
     }
 
     public function testIdentityEqualsReturnsTrueForEqualIdentity(): void
@@ -103,10 +103,10 @@ final class EntityBehaviorTest extends TestCase
         $sameIdentity = new OrderId(value: 'ord-5');
 
         /** @When comparing the identity */
-        $result = $order->identityEquals(other: $sameIdentity);
+        $hasEqualIdentity = $order->identityEquals(other: $sameIdentity);
 
         /** @Then the comparison yields true */
-        self::assertTrue($result);
+        self::assertTrue($hasEqualIdentity);
     }
 
     public function testIdentityEqualsReturnsFalseForDifferentIdentity(): void
@@ -118,10 +118,10 @@ final class EntityBehaviorTest extends TestCase
         $otherIdentity = new OrderId(value: 'ord-9');
 
         /** @When comparing the identity */
-        $result = $order->identityEquals(other: $otherIdentity);
+        $hasEqualIdentity = $order->identityEquals(other: $otherIdentity);
 
         /** @Then the comparison yields false */
-        self::assertFalse($result);
+        self::assertFalse($hasEqualIdentity);
     }
 
     public function testShipThrowsWhenIdentityPropertyIsMissing(): void
