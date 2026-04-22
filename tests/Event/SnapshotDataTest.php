@@ -13,19 +13,19 @@ final class SnapshotDataTest extends TestCase
     public function testToArrayReturnsTheOriginalPayload(): void
     {
         /** @Given snapshot data with a payload */
-        $snapshotData = new SnapshotData(data: ['status' => 'placed', 'amount' => 100]);
+        $snapshotData = new SnapshotData(payload: ['status' => 'placed', 'amount' => 100]);
 
         /** @When converting to array */
-        $result = $snapshotData->toArray();
+        $payload = $snapshotData->toArray();
 
         /** @Then the original data is returned */
-        self::assertSame(['status' => 'placed', 'amount' => 100], $result);
+        self::assertSame(['status' => 'placed', 'amount' => 100], $payload);
     }
 
     public function testToJsonProducesValidJson(): void
     {
         /** @Given snapshot data with a simple payload */
-        $snapshotData = new SnapshotData(data: ['status' => 'shipped']);
+        $snapshotData = new SnapshotData(payload: ['status' => 'shipped']);
 
         /** @When converting to JSON */
         $json = $snapshotData->toJson();
@@ -37,7 +37,7 @@ final class SnapshotDataTest extends TestCase
     public function testToJsonPreservesZeroFractionOnFloats(): void
     {
         /** @Given snapshot data with a float value */
-        $snapshotData = new SnapshotData(data: ['amount' => 1.0]);
+        $snapshotData = new SnapshotData(payload: ['amount' => 1.0]);
 
         /** @When converting to JSON with default flags */
         $json = $snapshotData->toJson();
@@ -49,7 +49,7 @@ final class SnapshotDataTest extends TestCase
     public function testToJsonHonorsAdditionalFlags(): void
     {
         /** @Given snapshot data with a nested payload */
-        $snapshotData = new SnapshotData(data: ['amount' => 1.0]);
+        $snapshotData = new SnapshotData(payload: ['amount' => 1.0]);
 
         /** @When converting to JSON with an additional pretty-print flag */
         $json = $snapshotData->toJson(flags: JSON_PRESERVE_ZERO_FRACTION | JSON_PRETTY_PRINT);
@@ -62,7 +62,7 @@ final class SnapshotDataTest extends TestCase
     public function testToJsonThrowsForNonSerializableValue(): void
     {
         /** @Given snapshot data containing a non-JSON-serializable value */
-        $snapshotData = new SnapshotData(data: ['infinity' => INF]);
+        $snapshotData = new SnapshotData(payload: ['infinity' => INF]);
 
         /** @Then a JsonException is thrown */
         $this->expectException(JsonException::class);
@@ -74,30 +74,30 @@ final class SnapshotDataTest extends TestCase
     public function testEqualsReturnsTrueForIdenticalPayloads(): void
     {
         /** @Given two snapshot data instances with identical payloads */
-        $first = new SnapshotData(data: ['status' => 'placed']);
+        $first = new SnapshotData(payload: ['status' => 'placed']);
 
         /** @And a matching counterpart */
-        $second = new SnapshotData(data: ['status' => 'placed']);
+        $second = new SnapshotData(payload: ['status' => 'placed']);
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are equal */
-        self::assertTrue($result);
+        self::assertTrue($areEqual);
     }
 
     public function testEqualsReturnsFalseForDifferentPayloads(): void
     {
         /** @Given two snapshot data instances with different payloads */
-        $first = new SnapshotData(data: ['status' => 'placed']);
+        $first = new SnapshotData(payload: ['status' => 'placed']);
 
         /** @And a distinct counterpart */
-        $second = new SnapshotData(data: ['status' => 'shipped']);
+        $second = new SnapshotData(payload: ['status' => 'shipped']);
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are not equal */
-        self::assertFalse($result);
+        self::assertFalse($areEqual);
     }
 }

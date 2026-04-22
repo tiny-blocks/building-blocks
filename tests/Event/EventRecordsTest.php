@@ -24,10 +24,10 @@ final class EventRecordsTest extends TestCase
         $records = EventRecords::createFromEmpty();
 
         /** @When checking whether it is empty */
-        $result = $records->isEmpty();
+        $isEmpty = $records->isEmpty();
 
         /** @Then the collection is empty */
-        self::assertTrue($result);
+        self::assertTrue($isEmpty);
     }
 
     public function testAddingARecordYieldsACollectionOfOneElement(): void
@@ -43,7 +43,7 @@ final class EventRecordsTest extends TestCase
             identity: new OrderId(value: 'ord-1'),
             revision: Revision::initial(),
             occurredOn: Instant::now(),
-            snapshotData: new SnapshotData(data: []),
+            snapshotData: new SnapshotData(payload: []),
             aggregateType: 'Order',
             sequenceNumber: SequenceNumber::first()
         );
@@ -65,7 +65,7 @@ final class EventRecordsTest extends TestCase
             identity: new OrderId(value: 'ord-1'),
             revision: Revision::initial(),
             occurredOn: Instant::now(),
-            snapshotData: new SnapshotData(data: []),
+            snapshotData: new SnapshotData(payload: []),
             aggregateType: 'Order',
             sequenceNumber: SequenceNumber::first()
         );

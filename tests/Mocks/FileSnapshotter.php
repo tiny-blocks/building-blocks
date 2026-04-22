@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Test\TinyBlocks\BuildingBlocks\Models;
+namespace Test\TinyBlocks\BuildingBlocks\Mocks;
 
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshotter;

@@ -19,9 +19,9 @@ trait SingleUpcasterBehavior
         }
 
         return $event
-            ->withSerializedEvent(serializedEvent: $this->doUpcast(data: $event->serializedEvent))
+            ->withSerializedEvent(serializedEvent: $this->rewrite(payload: $event->serializedEvent))
             ->withRevision(revision: Revision::of(value: static::TO_REVISION));
     }
 
-    abstract protected function doUpcast(array $data): array;
+    abstract protected function rewrite(array $payload): array;
 }

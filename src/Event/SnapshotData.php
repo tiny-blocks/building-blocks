@@ -11,17 +11,17 @@ final readonly class SnapshotData implements ValueObject
 {
     use ValueObjectBehavior;
 
-    public function __construct(private array $data)
+    public function __construct(private array $payload)
     {
     }
 
     public function toArray(): array
     {
-        return $this->data;
+        return $this->payload;
     }
 
     public function toJson(int $flags = JSON_PRESERVE_ZERO_FRACTION): string
     {
-        return json_encode(value: $this->data, flags: $flags | JSON_THROW_ON_ERROR);
+        return json_encode($this->payload, $flags | JSON_THROW_ON_ERROR);
     }
 }

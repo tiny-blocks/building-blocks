@@ -17,51 +17,63 @@ final class SnapshotConditionTest extends TestCase
         $cart = Cart::blank(identity: new CartId(value: 'cart-1'));
 
         /** @When asking the condition whether to snapshot */
-        $result = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
+        $shouldSnapshot = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
 
         /** @Then the condition holds because zero is divisible by two */
-        self::assertTrue($result);
+        self::assertTrue($shouldSnapshot);
     }
 
     public function testConditionDoesNotHoldAfterOneEvent(): void
     {
-        /** @Given a cart advanced to sequence number one */
+        /** @Given a blank cart */
         $cart = Cart::blank(identity: new CartId(value: 'cart-2'));
+
+        /** @And one product added advancing the sequence to one */
         $cart->addProduct(productId: 'prod-1');
 
         /** @When asking the condition whether to snapshot */
-        $result = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
+        $shouldSnapshot = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
 
         /** @Then the condition does not hold */
-        self::assertFalse($result);
+        self::assertFalse($shouldSnapshot);
     }
 
     public function testConditionHoldsAgainAfterTwoEvents(): void
     {
-        /** @Given a cart advanced to sequence number two */
+        /** @Given a blank cart */
         $cart = Cart::blank(identity: new CartId(value: 'cart-3'));
+
+        /** @And a first product added */
         $cart->addProduct(productId: 'prod-1');
+
+        /** @And a second product advancing the sequence to two */
         $cart->addProduct(productId: 'prod-2');
 
         /** @When asking the condition whether to snapshot */
-        $result = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
+        $shouldSnapshot = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
 
         /** @Then the condition holds again at the next even step */
-        self::assertTrue($result);
+        self::assertTrue($shouldSnapshot);
     }
 
     public function testConditionDoesNotHoldAfterThreeEvents(): void
     {
-        /** @Given a cart advanced to sequence number three */
+        /** @Given a blank cart */
         $cart = Cart::blank(identity: new CartId(value: 'cart-4'));
+
+        /** @And a first product added */
         $cart->addProduct(productId: 'prod-1');
+
+        /** @And a second product added */
         $cart->addProduct(productId: 'prod-2');
+
+        /** @And a third product advancing the sequence to three */
         $cart->addProduct(productId: 'prod-3');
 
         /** @When asking the condition whether to snapshot */
-        $result = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
+        $shouldSnapshot = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
 
         /** @Then the condition does not hold at an odd step */
-        self::assertFalse($result);
+        self::assertFalse($shouldSnapshot);
     }
 }

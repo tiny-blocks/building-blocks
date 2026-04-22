@@ -7,7 +7,7 @@ namespace Test\TinyBlocks\BuildingBlocks\Snapshot;
 use PHPUnit\Framework\TestCase;
 use Test\TinyBlocks\BuildingBlocks\Models\Cart;
 use Test\TinyBlocks\BuildingBlocks\Models\CartId;
-use Test\TinyBlocks\BuildingBlocks\Models\FileSnapshotter;
+use Test\TinyBlocks\BuildingBlocks\Mocks\FileSnapshotter;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
 final class SnapshotterBehaviorTest extends TestCase

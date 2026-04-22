@@ -26,11 +26,11 @@ final readonly class Snapshot implements ValueObject
 
     public static function fromAggregate(EventSourcingRoot $aggregate): Snapshot
     {
-        $reflection = new ReflectionObject(object: $aggregate);
+        $reflection = new ReflectionObject($aggregate);
         $aggregateState = [];
 
         foreach ($reflection->getProperties() as $property) {
-            if (!in_array(needle: $property->getName(), haystack: ['recordedEvents', 'sequenceNumber'], strict: true)) {
+            if (!in_array($property->getName(), ['recordedEvents', 'sequenceNumber'], true)) {
                 $aggregateState[$property->getName()] = $property->getValue($aggregate);
             }
         }

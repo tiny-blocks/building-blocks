@@ -15,7 +15,7 @@ trait EntityBehavior
         $name = $this->identityName();
 
         if (!property_exists($this, $name)) {
-            throw new MissingIdentityProperty(propertyName: $name, className: static::class);
+            throw new MissingIdentityProperty(className: static::class, propertyName: $name);
         }
 
         return $name;
@@ -38,6 +38,6 @@ trait EntityBehavior
 
     public function identityEquals(Identity $other): bool
     {
-        return $this->getIdentity() == $other;
+        return $this->getIdentity()->equals(other: $other);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Aggregate;
 
+use LogicException;
 use ReflectionClass;
 use ReflectionProperty;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
@@ -29,9 +30,9 @@ trait EventSourcingRootBehavior
 
     public static function blank(Identity $identity): static
     {
-        $aggregate = new ReflectionClass(objectOrClass: static::class)->newInstanceWithoutConstructor();
+        $aggregate = new ReflectionClass(static::class)->newInstanceWithoutConstructor();
         new ReflectionProperty($aggregate, $aggregate->identityName())
-            ->setValue(objectOrValue: $aggregate, value: $identity);
+            ->setValue($aggregate, $identity);
         $aggregate->sequenceNumber = SequenceNumber::initial();
         $aggregate->recordedEvents = EventRecords::createFromEmpty();
 
@@ -67,7 +68,17 @@ trait EventSourcingRootBehavior
 
     protected function applyEvent(EventRecord $record): void
     {
-        $methodName = 'when' . new ReflectionClass(objectOrClass: $record->event)->getShortName();
+        $eventClass = $record->event::class;
+        $separatorPosition = strrpos($eventClass, '\\');
+        $shortName = $separatorPosition === false ? $eventClass : substr($eventClass, $separatorPosition + 1);
+        $methodName = sprintf('when%s', $shortName);
+
+        if (!method_exists($this, $methodName)) {
+            $template = 'Handler method <%s> not found in aggregate <%s>.';
+
+            throw new LogicException(sprintf($template, $methodName, static::class));
+        }
+
         $this->{$methodName}($record->event);
         $this->sequenceNumber = $record->sequenceNumber;
     }

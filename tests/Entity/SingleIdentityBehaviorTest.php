@@ -30,10 +30,10 @@ final class SingleIdentityBehaviorTest extends TestCase
         $second = new OrderId(value: 'ord-1');
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are considered equal */
-        self::assertTrue($result);
+        self::assertTrue($areEqual);
     }
 
     public function testEqualsReturnsFalseForDifferentSingleIdentities(): void
@@ -45,9 +45,9 @@ final class SingleIdentityBehaviorTest extends TestCase
         $second = new OrderId(value: 'ord-2');
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are not equal */
-        self::assertFalse($result);
+        self::assertFalse($areEqual);
     }
 }

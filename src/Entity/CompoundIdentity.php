@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Entity;
 
-use TinyBlocks\Vo\ValueObject;
-
 /**
  * {@see Identity} composed of multiple fields treated as a tuple.
  *
@@ -16,6 +14,6 @@ use TinyBlocks\Vo\ValueObject;
  * <p>All declared properties participate in the identity: <code>getIdentityValue()</code> returns them
  * as an associative array keyed by property name.</p>
  */
-interface CompoundIdentity extends Identity, ValueObject
+interface CompoundIdentity extends Identity
 {
 }

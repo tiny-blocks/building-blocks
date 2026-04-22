@@ -33,7 +33,7 @@ trait AggregateRootBehavior
 
     public function buildAggregateName(): string
     {
-        return new ReflectionClass(objectOrClass: static::class)->getShortName();
+        return new ReflectionClass(static::class)->getShortName();
     }
 
     protected function modelVersion(): int
@@ -51,7 +51,7 @@ trait AggregateRootBehavior
         $state = get_object_vars($this);
         unset($state['recordedEvents']);
 
-        return new SnapshotData(data: $state);
+        return new SnapshotData(payload: $state);
     }
 
     protected function buildEventRecord(DomainEvent $event, Revision $revision): EventRecord

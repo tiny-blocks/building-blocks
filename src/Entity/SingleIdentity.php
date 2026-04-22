@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Entity;
 
-use TinyBlocks\Vo\ValueObject;
-
 /**
  * {@see Identity} composed of a single scalar value.
  *
@@ -16,6 +14,6 @@ use TinyBlocks\Vo\ValueObject;
  * <p>Implementations should declare exactly one property holding the scalar value; the default trait
  * reads it by reflection and returns it from <code>getIdentityValue()</code>.</p>
  */
-interface SingleIdentity extends Identity, ValueObject
+interface SingleIdentity extends Identity
 {
 }

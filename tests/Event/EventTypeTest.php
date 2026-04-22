@@ -55,10 +55,10 @@ final class EventTypeTest extends TestCase
         $second = EventType::fromString(value: 'OrderPlaced');
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are equal */
-        self::assertTrue($result);
+        self::assertTrue($areEqual);
     }
 
     public function testEqualsReturnsFalseForDifferentValues(): void
@@ -70,10 +70,10 @@ final class EventTypeTest extends TestCase
         $second = EventType::fromString(value: 'OrderShipped');
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are not equal */
-        self::assertFalse($result);
+        self::assertFalse($areEqual);
     }
 
     #[DataProvider('invalidPatterns')]
@@ -115,11 +115,11 @@ final class EventTypeTest extends TestCase
     public static function invalidPatterns(): array
     {
         return [
-            'lowercase start'     => ['orderPlaced'],
-            'contains spaces'     => ['Order Placed'],
-            'empty string'        => [''],
+            'lowercase start' => ['orderPlaced'],
+            'contains spaces' => ['Order Placed'],
+            'empty string' => [''],
             'contains underscore' => ['Order_Placed'],
-            'single character'    => ['O']
+            'single character' => ['O']
         ];
     }
 }

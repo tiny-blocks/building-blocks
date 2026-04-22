@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Test\TinyBlocks\BuildingBlocks\Aggregate;
 
+use LogicException;
 use PHPUnit\Framework\TestCase;
 use Test\TinyBlocks\BuildingBlocks\Models\Cart;
 use Test\TinyBlocks\BuildingBlocks\Models\CartId;
+use Test\TinyBlocks\BuildingBlocks\Models\CartWithoutHandler;
 use Test\TinyBlocks\BuildingBlocks\Models\ProductAdded;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
@@ -231,7 +233,9 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
         $cart->addProduct(productId: 'prod-2');
         $laterRecords = $cart->recordedEvents()->filter(
-            predicates: static fn($record): bool => $record->sequenceNumber->isAfter(other: $snapshot->getSequenceNumber())
+            predicates: static fn($record): bool => $record->sequenceNumber->isAfter(
+                other: $snapshot->getSequenceNumber()
+            )
         );
 
         /** @When reconstituting from the snapshot and the later records */
@@ -250,7 +254,9 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
         $cart->addProduct(productId: 'prod-2');
         $laterRecords = $cart->recordedEvents()->filter(
-            predicates: static fn($record): bool => $record->sequenceNumber->isAfter(other: $snapshot->getSequenceNumber())
+            predicates: static fn($record): bool => $record->sequenceNumber->isAfter(
+                other: $snapshot->getSequenceNumber()
+            )
         );
 
         /** @When reconstituting from the snapshot and the later records */
@@ -272,5 +278,25 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
         /** @Then the reconstituted aggregate has no fresh recorded events */
         self::assertTrue($reconstituted->recordedEvents()->isEmpty());
+    }
+
+    public function testReconstituteThrowsWhenHandlerMethodIsMissing(): void
+    {
+        /** @Given a recorded event whose aggregate has no matching when handler */
+        $cartId = new CartId(value: 'cart-10');
+        $original = Cart::blank(identity: $cartId);
+        $original->addProduct(productId: 'prod-x');
+
+        /** @Then a LogicException pointing to the missing handler should be thrown */
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage(
+            sprintf(
+                'Handler method <whenProductAdded> not found in aggregate <%s>.',
+                CartWithoutHandler::class
+            )
+        );
+
+        /** @When reconstituting an aggregate without the handler */
+        CartWithoutHandler::reconstitute(identity: $cartId, records: $original->recordedEvents());
     }
 }

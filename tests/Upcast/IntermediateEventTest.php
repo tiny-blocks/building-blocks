@@ -7,8 +7,8 @@ namespace Test\TinyBlocks\BuildingBlocks\Upcast;
 use PHPUnit\Framework\TestCase;
 use TinyBlocks\BuildingBlocks\Event\EventType;
 use TinyBlocks\BuildingBlocks\Event\Revision;
+use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
 use TinyBlocks\BuildingBlocks\Upcast\IntermediateEvent;
-use TinyBlocks\Mapper\KeyPreservation;
 
 final class IntermediateEventTest extends TestCase
 {
@@ -123,10 +123,10 @@ final class IntermediateEventTest extends TestCase
         $second = new IntermediateEvent(type: $eventType, revision: $revision, serializedEvent: $payload);
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are equal */
-        self::assertTrue($result);
+        self::assertTrue($areEqual);
     }
 
     public function testEqualsReturnsFalseForDifferentPayloads(): void
@@ -140,10 +140,81 @@ final class IntermediateEventTest extends TestCase
         $second = new IntermediateEvent(type: $eventType, revision: $revision, serializedEvent: ['productId' => 'b']);
 
         /** @When comparing them */
-        $result = $first->equals(other: $second);
+        $areEqual = $first->equals(other: $second);
 
         /** @Then they are not equal */
-        self::assertFalse($result);
+        self::assertFalse($areEqual);
+    }
+
+    public function testEqualsReturnsFalseWhenOnlyTypeDiffers(): void
+    {
+        /** @Given two intermediate events sharing revision and payload */
+        $revision = Revision::initial();
+
+        /** @And differing only by type */
+        $first = new IntermediateEvent(
+            type: EventType::fromString(value: 'ProductAdded'),
+            revision: $revision,
+            serializedEvent: ['productId' => 'prod-1']
+        );
+
+        /** @And a counterpart with a different type */
+        $second = new IntermediateEvent(
+            type: EventType::fromString(value: 'ProductRemoved'),
+            revision: $revision,
+            serializedEvent: ['productId' => 'prod-1']
+        );
+
+        /** @When comparing them */
+        $areEqual = $first->equals(other: $second);
+
+        /** @Then they are not equal */
+        self::assertFalse($areEqual);
+    }
+
+    public function testEqualsReturnsFalseWhenOnlyRevisionDiffers(): void
+    {
+        /** @Given two intermediate events sharing type and payload */
+        $eventType = EventType::fromString(value: 'ProductAdded');
+
+        /** @And differing only by revision */
+        $first = new IntermediateEvent(
+            type: $eventType,
+            revision: Revision::initial(),
+            serializedEvent: ['productId' => 'prod-1']
+        );
+
+        /** @And a counterpart at a later revision */
+        $second = new IntermediateEvent(
+            type: $eventType,
+            revision: Revision::of(value: 2),
+            serializedEvent: ['productId' => 'prod-1']
+        );
+
+        /** @When comparing them */
+        $areEqual = $first->equals(other: $second);
+
+        /** @Then they are not equal */
+        self::assertFalse($areEqual);
+    }
+
+    public function testEqualsReturnsFalseWhenOtherIsDifferentValueObjectType(): void
+    {
+        /** @Given an intermediate event */
+        $event = new IntermediateEvent(
+            type: EventType::fromString(value: 'ProductAdded'),
+            revision: Revision::initial(),
+            serializedEvent: ['productId' => 'prod-1']
+        );
+
+        /** @And a value object of a different class */
+        $otherValueObject = SequenceNumber::first();
+
+        /** @When comparing them */
+        $areEqual = $event->equals(other: $otherValueObject);
+
+        /** @Then they are not equal */
+        self::assertFalse($areEqual);
     }
 
     public function testFromIterableWithTypedFieldsCreatesEqualEvent(): void
@@ -157,8 +228,8 @@ final class IntermediateEventTest extends TestCase
 
         /** @When reconstituting from an iterable of typed values */
         $restored = IntermediateEvent::fromIterable(iterable: [
-            'type' => EventType::fromString(value: 'ProductAdded'),
-            'revision' => Revision::initial(),
+            'type'            => EventType::fromString(value: 'ProductAdded'),
+            'revision'        => Revision::initial(),
             'serializedEvent' => ['productId' => 'prod-1']
         ]);
 
@@ -176,7 +247,7 @@ final class IntermediateEventTest extends TestCase
         );
 
         /** @When converting to array */
-        $array = $event->toArray(KeyPreservation::PRESERVE);
+        $array = $event->toArray();
 
         /** @Then type and revision are unwrapped to their scalar values */
         self::assertSame('ProductAdded', $array['type']);
@@ -194,7 +265,7 @@ final class IntermediateEventTest extends TestCase
         );
 
         /** @When converting to JSON */
-        $json = $event->toJson(KeyPreservation::PRESERVE);
+        $json = $event->toJson();
 
         /** @Then the result is a valid JSON string with the expected structure */
         self::assertSame(

@@ -17,14 +17,14 @@ final readonly class EventType implements ValueObject
 
     private function __construct(public string $value)
     {
-        if (!preg_match(pattern: self::PATTERN, subject: $value)) {
+        if (!preg_match(self::PATTERN, $value)) {
             throw new InvalidEventType(value: $value, pattern: self::PATTERN);
         }
     }
 
     public static function fromEvent(DomainEvent $event): EventType
     {
-        return new EventType(value: new ReflectionClass(objectOrClass: $event)->getShortName());
+        return new EventType(value: new ReflectionClass($event)->getShortName());
     }
 
     public static function fromString(string $value): EventType
