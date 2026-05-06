@@ -9,6 +9,10 @@ use PHPUnit\Framework\TestCase;
 use Test\TinyBlocks\BuildingBlocks\Models\Cart;
 use Test\TinyBlocks\BuildingBlocks\Models\CartId;
 use Test\TinyBlocks\BuildingBlocks\Models\CartWithoutHandler;
+use Test\TinyBlocks\BuildingBlocks\Models\ExplicitCart;
+use Test\TinyBlocks\BuildingBlocks\Models\Order;
+use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
+use Test\TinyBlocks\BuildingBlocks\Models\OrderPlaced;
 use Test\TinyBlocks\BuildingBlocks\Models\ProductAdded;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
@@ -79,15 +83,14 @@ final class EventSourcingRootBehaviorTest extends TestCase
         /** @Given a blank cart */
         $cart = Cart::blank(identity: new CartId(value: 'cart-3'));
 
-        /** @And two products added in sequence */
+        /** @When adding a product */
         $cart->addProduct(productId: 'prod-1');
+
+        /** @And adding a second product */
         $cart->addProduct(productId: 'prod-2');
 
-        /** @When retrieving the sequence number */
-        $sequenceNumber = $cart->getSequenceNumber();
-
         /** @Then the sequence number equals the number of events */
-        self::assertSame(2, $sequenceNumber->value);
+        self::assertSame(2, $cart->getSequenceNumber()->value);
     }
 
     public function testDomainOperationAppendsToRecordedEvents(): void
@@ -104,14 +107,16 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
     public function testFirstRecordedEventCarriesEnvelopeMetadata(): void
     {
-        /** @Given a blank cart with a known identity */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-5');
 
-        /** @And a product added to the cart */
+        /** @And a blank cart initialized */
         $cart = Cart::blank(identity: $cartId);
+
+        /** @And a product added to the cart */
         $cart->addProduct(productId: 'prod-abc');
 
-        /** @When inspecting the first recorded record */
+        /** @When inspecting the first recorded event */
         $record = $cart->recordedEvents()->first();
 
         /** @Then the envelope carries the expected metadata */
@@ -126,11 +131,11 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
     public function testReconstituteReplaysEventsInOrder(): void
     {
-        /** @Given a cart with two products added */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-6');
-        $original = Cart::blank(identity: $cartId);
-        $original->addProduct(productId: 'prod-1');
-        $original->addProduct(productId: 'prod-2');
+
+        /** @And a cart with two products added */
+        $original = Cart::withProducts(cartId: $cartId, count: 2);
 
         /** @When reconstituting from the event stream */
         $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
@@ -141,11 +146,19 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
     public function testReconstitutePreservesEventOrderForDistinctivelyOrderedStream(): void
     {
-        /** @Given a cart that received products in a distinctive order */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-6b');
+
+        /** @And a blank cart */
         $original = Cart::blank(identity: $cartId);
+
+        /** @And a product added named zebra */
         $original->addProduct(productId: 'zebra');
+
+        /** @And a product added named apple */
         $original->addProduct(productId: 'apple');
+
+        /** @And a product added named mango */
         $original->addProduct(productId: 'mango');
 
         /** @When reconstituting from the event stream */
@@ -157,11 +170,11 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
     public function testReconstituteAdvancesSequenceNumberToLastEvent(): void
     {
-        /** @Given a cart with two products added */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-6c');
-        $original = Cart::blank(identity: $cartId);
-        $original->addProduct(productId: 'prod-1');
-        $original->addProduct(productId: 'prod-2');
+
+        /** @And a cart with two products added */
+        $original = Cart::withProducts(cartId: $cartId, count: 2);
 
         /** @When reconstituting from the event stream */
         $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
@@ -196,10 +209,16 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
     public function testReconstituteFromSnapshotRestoresDomainState(): void
     {
-        /** @Given a cart with one product and a snapshot taken at that point */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-8');
+
+        /** @And a blank cart */
         $cart = Cart::blank(identity: $cartId);
+
+        /** @And a product added */
         $cart->addProduct(productId: 'prod-snapshot');
+
+        /** @And a snapshot taken at that point */
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
 
         /** @When reconstituting from the snapshot only */
@@ -211,10 +230,16 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
     public function testReconstituteFromSnapshotAppliesTheSnapshotSequenceNumber(): void
     {
-        /** @Given a cart with one product and a snapshot taken at that point */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-8b');
+
+        /** @And a blank cart */
         $cart = Cart::blank(identity: $cartId);
+
+        /** @And a product added */
         $cart->addProduct(productId: 'prod-snapshot');
+
+        /** @And a snapshot taken at that point */
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
 
         /** @When reconstituting from the snapshot only */
@@ -226,12 +251,22 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
     public function testReconstituteCombinesSnapshotWithLaterEvents(): void
     {
-        /** @Given a cart snapshotted after one product, then more events after the snapshot */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-8c');
+
+        /** @And a blank cart */
         $cart = Cart::blank(identity: $cartId);
+
+        /** @And a first product added */
         $cart->addProduct(productId: 'prod-1');
+
+        /** @And a snapshot taken after the first product */
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
+
+        /** @And a second product added after the snapshot */
         $cart->addProduct(productId: 'prod-2');
+
+        /** @And the records after the snapshot filtered out */
         $laterRecords = $cart->recordedEvents()->filter(
             predicates: static fn($record): bool => $record->sequenceNumber->isAfter(
                 other: $snapshot->getSequenceNumber()
@@ -247,12 +282,22 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
     public function testReconstituteCombinedWithSnapshotAndLaterEventsAdvancesSequence(): void
     {
-        /** @Given a cart snapshotted after one product, then more events after the snapshot */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-8d');
+
+        /** @And a blank cart */
         $cart = Cart::blank(identity: $cartId);
+
+        /** @And a first product added */
         $cart->addProduct(productId: 'prod-1');
+
+        /** @And a snapshot taken after the first product */
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
+
+        /** @And a second product added after the snapshot */
         $cart->addProduct(productId: 'prod-2');
+
+        /** @And the records after the snapshot filtered out */
         $laterRecords = $cart->recordedEvents()->filter(
             predicates: static fn($record): bool => $record->sequenceNumber->isAfter(
                 other: $snapshot->getSequenceNumber()
@@ -268,10 +313,11 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
     public function testReconstitutedAggregateHasNoRecordedEvents(): void
     {
-        /** @Given a cart with one recorded event */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-9');
-        $original = Cart::blank(identity: $cartId);
-        $original->addProduct(productId: 'prod-1');
+
+        /** @And a cart with one product added */
+        $original = Cart::withProducts(cartId: $cartId, count: 1);
 
         /** @When reconstituting from that event stream */
         $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
@@ -280,12 +326,59 @@ final class EventSourcingRootBehaviorTest extends TestCase
         self::assertTrue($reconstituted->recordedEvents()->isEmpty());
     }
 
+    public function testExplicitHandlerIsInvokedForRegisteredEvent(): void
+    {
+        /** @Given a blank ExplicitCart */
+        $cart = ExplicitCart::blank(identity: new CartId(value: 'cart-explicit-1'));
+
+        /** @When adding a product via the explicit handler path */
+        $cart->addProduct(productId: 'prod-explicit');
+
+        /** @Then the product appears in the aggregate state */
+        self::assertSame(['prod-explicit'], $cart->getProductIds());
+    }
+
+    public function testRevisionOverrideIsCarriedOnEventRecord(): void
+    {
+        /** @Given a blank ExplicitCart */
+        $cart = ExplicitCart::blank(identity: new CartId(value: 'cart-explicit-2'));
+
+        /** @When adding a v2 product whose event overrides revision */
+        $cart->addProductV2(productId: 'prod-v2', quantity: 3);
+
+        /** @Then the recorded event carries revision 2 */
+        self::assertSame(2, $cart->recordedEvents()->first()->revision->value);
+    }
+
+    public function testExplicitCartThrowsForUnregisteredEvent(): void
+    {
+        /** @Given an ExplicitCart identity */
+        $cartId = new CartId(value: 'cart-explicit-err');
+
+        /** @And an OrderPlaced record from a foreign aggregate */
+        $orderRecords = Order::place(orderId: new OrderId(value: 'ord-err'), item: 'book')->recordedEvents();
+
+        /** @Then a LogicException naming the unregistered event should be thrown */
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage(
+            sprintf(
+                'No handler registered for event <%s> in aggregate <%s>.',
+                OrderPlaced::class,
+                ExplicitCart::class
+            )
+        );
+
+        /** @When reconstituting ExplicitCart from the OrderPlaced records */
+        ExplicitCart::reconstitute(identity: $cartId, records: $orderRecords);
+    }
+
     public function testReconstituteThrowsWhenHandlerMethodIsMissing(): void
     {
-        /** @Given a recorded event whose aggregate has no matching when handler */
+        /** @Given a cart identity */
         $cartId = new CartId(value: 'cart-10');
-        $original = Cart::blank(identity: $cartId);
-        $original->addProduct(productId: 'prod-x');
+
+        /** @And a cart with one product added */
+        $original = Cart::withProducts(cartId: $cartId, count: 1);
 
         /** @Then a LogicException pointing to the missing handler should be thrown */
         $this->expectException(LogicException::class);

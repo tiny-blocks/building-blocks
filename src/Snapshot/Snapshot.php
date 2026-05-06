@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Snapshot;
 
-use ReflectionObject;
 use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
 use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
 use TinyBlocks\Time\Instant;
@@ -15,7 +14,7 @@ final readonly class Snapshot implements ValueObject
 {
     use ValueObjectBehavior;
 
-    public function __construct(
+    private function __construct(
         private string $type,
         private Instant $createdAt,
         private mixed $aggregateId,
@@ -24,22 +23,29 @@ final readonly class Snapshot implements ValueObject
     ) {
     }
 
+    public static function restore(
+        string $type,
+        Instant $createdAt,
+        mixed $aggregateId,
+        array $aggregateState,
+        SequenceNumber $sequenceNumber
+    ): Snapshot {
+        return new Snapshot(
+            type: $type,
+            createdAt: $createdAt,
+            aggregateId: $aggregateId,
+            aggregateState: $aggregateState,
+            sequenceNumber: $sequenceNumber
+        );
+    }
+
     public static function fromAggregate(EventSourcingRoot $aggregate): Snapshot
     {
-        $reflection = new ReflectionObject($aggregate);
-        $aggregateState = [];
-
-        foreach ($reflection->getProperties() as $property) {
-            if (!in_array($property->getName(), ['recordedEvents', 'sequenceNumber'], true)) {
-                $aggregateState[$property->getName()] = $property->getValue($aggregate);
-            }
-        }
-
         return new Snapshot(
             type: $aggregate->buildAggregateName(),
             createdAt: Instant::now(),
             aggregateId: $aggregate->getIdentityValue(),
-            aggregateState: $aggregateState,
+            aggregateState: $aggregate->getSnapshotState(),
             sequenceNumber: $aggregate->getSequenceNumber()
         );
     }

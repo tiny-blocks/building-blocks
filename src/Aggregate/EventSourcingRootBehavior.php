@@ -4,29 +4,20 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Aggregate;
 
-use LogicException;
 use ReflectionClass;
 use ReflectionProperty;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\DomainEvent;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
-use TinyBlocks\BuildingBlocks\Event\Revision;
 use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
+use TinyBlocks\BuildingBlocks\Internal\Exceptions\EventHandlerMethodNotFound;
+use TinyBlocks\BuildingBlocks\Internal\Exceptions\NoEventHandlerRegistered;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
 trait EventSourcingRootBehavior
 {
     use AggregateRootBehavior;
-
-    private EventRecords $recordedEvents;
-
-    public function recordedEvents(): EventRecords
-    {
-        $records = $this->recordedEvents ?? EventRecords::createFromEmpty();
-
-        return EventRecords::createFrom(elements: $records);
-    }
 
     public static function blank(Identity $identity): static
     {
@@ -58,25 +49,47 @@ trait EventSourcingRootBehavior
         return $aggregate;
     }
 
-    protected function when(DomainEvent $event, Revision $revision): void
+    public function eventHandlers(): array
+    {
+        return [];
+    }
+
+    public function getSnapshotState(): array
+    {
+        $state = get_object_vars($this);
+        unset($state['recordedEvents'], $state['sequenceNumber']);
+
+        return $state;
+    }
+
+    protected function when(DomainEvent $event): void
     {
         $this->nextSequenceNumber();
-        $record = $this->buildEventRecord(event: $event, revision: $revision);
+        $record = $this->buildEventRecord(event: $event);
         $this->applyEvent(record: $record);
-        $this->recordedEvents = ($this->recordedEvents ?? EventRecords::createFromEmpty())->add($record);
+        $this->recordedEvents = ($this->recordedEvents ?? EventRecords::createFromEmpty())
+            ->add(elements: $record);
     }
 
     protected function applyEvent(EventRecord $record): void
     {
+        $handlers = $this->eventHandlers();
         $eventClass = $record->event::class;
-        $separatorPosition = strrpos($eventClass, '\\');
-        $shortName = $separatorPosition === false ? $eventClass : substr($eventClass, $separatorPosition + 1);
-        $methodName = sprintf('when%s', $shortName);
+
+        if ($handlers !== []) {
+            if (!array_key_exists($eventClass, $handlers)) {
+                throw new NoEventHandlerRegistered(eventClass: $eventClass, aggregateClass: static::class);
+            }
+
+            $handlers[$eventClass]($record->event);
+            $this->sequenceNumber = $record->sequenceNumber;
+            return;
+        }
+
+        $methodName = sprintf('when%s', $record->type->value);
 
         if (!method_exists($this, $methodName)) {
-            $template = 'Handler method <%s> not found in aggregate <%s>.';
-
-            throw new LogicException(sprintf($template, $methodName, static::class));
+            throw new EventHandlerMethodNotFound(methodName: $methodName, aggregateClass: static::class);
         }
 
         $this->{$methodName}($record->event);

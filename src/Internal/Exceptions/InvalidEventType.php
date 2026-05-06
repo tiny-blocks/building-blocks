@@ -10,8 +10,8 @@ final class InvalidEventType extends InvalidArgumentException
 {
     public function __construct(public readonly string $value, public readonly string $pattern)
     {
-        parent::__construct(
-            sprintf('Event type <%s> does not match the required pattern <%s>.', $value, $pattern)
-        );
+        $template = 'Event type <%s> does not match the required pattern <%s>.';
+
+        parent::__construct(sprintf($template, $value, $pattern));
     }
 }

@@ -9,7 +9,9 @@
     + [Aggregate](#aggregate)
     + [Domain events with transactional outbox](#domain-events-with-transactional-outbox)
     + [Event sourcing](#event-sourcing)
+    + [Consuming events](#consuming-events)
     + [Snapshots](#snapshots)
+        - [Built-in conditions](#built-in-conditions)
     + [Upcasting](#upcasting)
         - [Defining an upcaster](#defining-an-upcaster)
         - [Upcasting an event](#upcasting-an-event)
@@ -44,8 +46,9 @@ The library exposes three styles of aggregate modeling through sibling interface
 
 ### Entity
 
-Every entity implements a protected `identityName()` method returning the name of the property that holds its
-`Identity`.
+Every entity exposes identity through `EntityBehavior`. The protected `identityName()` method returns the name of
+the property that holds the `Identity` and defaults to `'id'`. Override it only when the property has a different
+name.
 
 #### Single-field identity
 
@@ -176,15 +179,41 @@ emitted as side effects and must be delivered at-least-once.
 
 #### Declaring events
 
-* `DomainEvent`: empty marker interface. A domain event is a plain PHP object.
+* `DomainEvent`: interface declaring `revision()`. A domain event is a plain PHP object. Use
+  `DomainEventBehavior` to get the default revision of 1; override `revision()` only when bumping schema.
 
   ```php
   use TinyBlocks\BuildingBlocks\Event\DomainEvent;
+  use TinyBlocks\BuildingBlocks\Event\DomainEventBehavior;
 
   final readonly class OrderPlaced implements DomainEvent
   {
+      use DomainEventBehavior;
+
       public function __construct(public string $item)
       {
+      }
+  }
+  ```
+
+  When a schema change requires a new revision, override `revision()`:
+
+  ```php
+  use TinyBlocks\BuildingBlocks\Event\DomainEvent;
+  use TinyBlocks\BuildingBlocks\Event\DomainEventBehavior;
+  use TinyBlocks\BuildingBlocks\Event\Revision;
+
+  final readonly class OrderPlacedV2 implements DomainEvent
+  {
+      use DomainEventBehavior;
+
+      public function __construct(public string $item, public string $currency)
+      {
+      }
+
+      public function revision(): Revision
+      {
+          return Revision::of(value: 2);
       }
   }
   ```
@@ -192,33 +221,26 @@ emitted as side effects and must be delivered at-least-once.
 #### Emitting events from the aggregate
 
 * `push`: protected method on `EventualAggregateRootBehavior`. Increments the sequence number and appends a
-  fully-built `EventRecord` to the recorded buffer. The `Revision` is provided on the call site, so the event class
-  stays pure.
+  fully-built `EventRecord` to the recorded buffer. The `Revision` is read from the event via `revision()`.
 
   ```php
   use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
   use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRootBehavior;
-  use TinyBlocks\BuildingBlocks\Event\Revision;
 
   final class Order implements EventualAggregateRoot
   {
       use EventualAggregateRootBehavior;
 
-      private function __construct(private OrderId $orderId)
+      private function __construct(private OrderId $id)
       {
       }
 
       public static function place(OrderId $orderId, string $item): Order
       {
-          $order = new Order(orderId: $orderId);
-          $order->push(event: new OrderPlaced(item: $item), revision: Revision::initial());
+          $order = new Order(id: $orderId);
+          $order->push(event: new OrderPlaced(item: $item));
 
           return $order;
-      }
-
-      protected function identityName(): string
-      {
-          return 'orderId';
       }
   }
   ```
@@ -244,13 +266,13 @@ emitted as side effects and must be delivered at-least-once.
 
 #### Applying events to state
 
-* `when`: protected method that records the event and immediately applies it to state by dispatching to a
-  `when<EventShortName>` method by reflection.
+* `when`: protected method that records the event and immediately applies it to state. By default, it dispatches
+  to a `when<EventShortName>` method. Alternatively, register an explicit handler map via `eventHandlers()`.
+  Override `identityName()` only when the identity property is not named `id` (for example, `Cart` uses `cartId`).
 
   ```php
   use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
   use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRootBehavior;
-  use TinyBlocks\BuildingBlocks\Event\Revision;
   use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
   final class Cart implements EventSourcingRoot
@@ -262,7 +284,7 @@ emitted as side effects and must be delivered at-least-once.
 
       public function addProduct(string $productId): void
       {
-          $this->when(event: new ProductAdded(productId: $productId), revision: Revision::initial());
+          $this->when(event: new ProductAdded(productId: $productId));
       }
 
       public function applySnapshot(Snapshot $snapshot): void
@@ -278,6 +300,48 @@ emitted as side effects and must be delivered at-least-once.
       protected function whenProductAdded(ProductAdded $event): void
       {
           $this->productIds[] = $event->productId;
+      }
+  }
+  ```
+
+  To register handlers explicitly instead of relying on the `when<EventShortName>` convention, override
+  `eventHandlers()`. When the map is non-empty, only listed event classes are dispatched; any other event
+  causes a `LogicException`.
+
+  ```php
+  use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
+  use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRootBehavior;
+  use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
+
+  final class Cart implements EventSourcingRoot
+  {
+      use EventSourcingRootBehavior;
+
+      private CartId $cartId;
+      private array $productIds = [];
+
+      public function addProduct(string $productId): void
+      {
+          $this->when(event: new ProductAdded(productId: $productId));
+      }
+
+      public function applySnapshot(Snapshot $snapshot): void
+      {
+          $this->productIds = $snapshot->getAggregateState()['productIds'] ?? [];
+      }
+
+      public function eventHandlers(): array
+      {
+          return [
+              ProductAdded::class => function (ProductAdded $event): void {
+                  $this->productIds[] = $event->productId;
+              }
+          ];
+      }
+
+      protected function identityName(): string
+      {
+          return 'cartId';
       }
   }
   ```
@@ -307,6 +371,42 @@ emitted as side effects and must be delivered at-least-once.
       snapshot: $snapshot
   );
   ```
+
+### Consuming events
+
+Domain events travel between services through whatever broker the consumer chooses (SQS, Kafka, RabbitMQ, etc.).
+The library is intentionally silent about the transport: it produces and consumes `EventRecord` envelopes,
+which the consumer is responsible for serializing and deserializing.
+
+A typical consumer integration deserializes the broker payload back into an `EventRecord` and dispatches
+the wrapped `DomainEvent` to a handler. Sketch of the consumer side:
+
+```php
+$record = new EventRecord(
+    id: Uuid::fromString($payload['event_id']),
+    type: EventType::fromString(value: $payload['event_type']),
+    event: $eventDeserializer->deserialize(type: $payload['event_type'], data: $payload['event_data']),
+    identity: $identityDeserializer->deserialize(
+        type: $payload['aggregate_type'],
+        value: $payload['aggregate_id']
+    ),
+    revision: Revision::of(value: $payload['revision']),
+    occurredOn: Instant::fromString($payload['occurred_on']),
+    snapshotData: new SnapshotData(payload: json_decode($payload['snapshot'], true)),
+    aggregateType: $payload['aggregate_type'],
+    sequenceNumber: SequenceNumber::of(value: $payload['sequence_number'])
+);
+
+$handler->handle(record: $record);
+```
+
+The aggregate identity, aggregate type, sequence number, and revision are all available on the envelope.
+Handlers receive the full `EventRecord` rather than just the `DomainEvent`, so they can route or filter
+based on envelope metadata without that metadata leaking into the event itself.
+
+The library does not ship deserializers because the format depends entirely on the consumer's transport
+and storage choices. Consumers typically maintain a small registry mapping `EventType` values to concrete
+`DomainEvent` classes, and a similar mapping for identity types.
 
 ### Snapshots
 
@@ -362,6 +462,28 @@ Snapshots let the event store skip replay of early events when reconstituting a 
           return $aggregate->getSequenceNumber()->value % 100 === 0;
       }
   }
+  ```
+
+#### Built-in conditions
+
+Two ready-made implementations ship with the library:
+
+* `SnapshotEvery::events(count: N)` — returns `true` when the sequence number is a positive multiple of `N`.
+  Throws `InvalidArgumentException` when `N < 1`.
+
+  ```php
+  use TinyBlocks\BuildingBlocks\Snapshot\SnapshotEvery;
+
+  $condition = SnapshotEvery::events(count: 100);
+  $condition->shouldSnapshot(aggregate: $cart); # true at sequences 100, 200, 300, …
+  ```
+
+* `SnapshotNever::create()` — always returns `false`. Useful in tests or to explicitly disable snapshotting.
+
+  ```php
+  use TinyBlocks\BuildingBlocks\Snapshot\SnapshotNever;
+
+  $condition = SnapshotNever::create();
   ```
 
 ### Upcasting
@@ -440,7 +562,7 @@ Upcasters migrate serialized events across schema changes without touching the e
   $event = IntermediateEvent::fromIterable(iterable: [
       'type' => EventType::fromString(value: 'ProductAdded'),
       'revision' => Revision::of(value: 2),
-      'serializedEvent' => ['productId' => 'prod-1', 'quantity' => 1],
+      'serializedEvent' => ['productId' => 'prod-1', 'quantity' => 1]
   ]);
   ```
 
@@ -456,11 +578,13 @@ Upcasters migrate serialized events across schema changes without touching the e
 
 ## FAQ
 
-### 01. Why is `DomainEvent` an empty marker interface?
+### 01. Why does `DomainEvent` only declare `revision()`?
 
-A domain event is a fact about something that happened in the domain. It has no technical contract beyond being that
-fact. Persistence and transport concerns (type name, revision, aggregate identity) belong to `EventRecord`, not to
-the event itself. Keeping the event pure prevents infrastructure concerns from leaking into the domain model.
+`DomainEvent` declares one method, `revision()`, because schema versioning is an intrinsic property of the
+event's structure: it tells consumers which fields the event carries and what semantics they have.
+All other concerns — aggregate identity, aggregate type, sequence number, and serialization format —
+belong to `EventRecord`, not to the event itself. Keeping those out of `DomainEvent` prevents
+infrastructure from leaking into the domain model.
 
 ### 02. Why does `EventualAggregateRoot` store `EventRecord` instead of `DomainEvent`?
 
@@ -474,32 +598,27 @@ Outbox and event sourcing are mutually exclusive persistence strategies. An aggr
 emits events as side effects, or persists only its events as the source of truth. A common base beyond `AggregateRoot`
 would imply the two patterns can coexist on the same aggregate, which they cannot.
 
-### 04. Why does `Revision` live on the call site instead of on the event class?
-
-Keeping `Revision` on the `push` or `when` call site makes the aggregate the author of schema evolution. The
-event class stays pure. Bumping the revision of an existing event does not require creating a new class.
-
-### 05. Why does `blank` skip the constructor?
+### 04. Why does `blank` skip the constructor?
 
 `EventSourcingRootBehavior::blank` instantiates the aggregate via reflection without invoking its constructor because
 all aggregate state in an event-sourced model must come from events or from a snapshot. Any invariants established by
 the constructor would contradict that principle. Concrete aggregates should treat their constructor as private and
 reserved for internal use.
 
-### 06. Why are `recordedEvents` and `sequenceNumber` excluded from `Snapshot::aggregateState`?
+### 05. Why are `recordedEvents` and `sequenceNumber` excluded from `Snapshot::aggregateState`?
 
 `recordedEvents` belongs to the current unit of work, not to the aggregate's intrinsic state. `sequenceNumber` is
 already carried by the snapshot as a first-class field, so duplicating it inside `aggregateState` would force
 consumers to decide which copy is authoritative.
 
-### 07. Why are custom exceptions declared under `Internal\Exceptions` instead of the root namespace?
+### 06. Why are custom exceptions declared under `Internal\Exceptions` instead of the root namespace?
 
 Custom exceptions such as `InvalidEventType`, `InvalidRevision`, `InvalidSequenceNumber`, and
 `MissingIdentityProperty` are implementation details. They extend `InvalidArgumentException` or
 `RuntimeException` from the PHP standard library, so consumers that catch the broad standard types continue to work;
 consumers that need precise handling can catch the specific classes.
 
-### 08. Why did `IDENTITY` and `MODEL_VERSION` move from constants to methods?
+### 07. Why did `IDENTITY` and `MODEL_VERSION` move from constants to methods?
 
 Class constants read by reflection inside traits are invisible to static analyzers such as PHPStan and Psalm. Every
 concrete aggregate had to annotate `@phpstan-ignore-next-line` or equivalent suppressions just to satisfy level-9
@@ -507,7 +626,7 @@ analysis. Replacing them with a protected `identityName(): string` method and a 
 method makes the contract explicit in PHP's type system: the compiler enforces implementation, IDEs can navigate to
 it, and static analyzers raise no warnings — in the library or at consumer sites.
 
-### 09. Why do `Revision`, `SequenceNumber`, and `EventType` now have private constructors?
+### 08. Why do `Revision`, `SequenceNumber`, and `EventType` now have private constructors?
 
 These value objects have named static factories that carry semantic meaning: `Revision::initial()` communicates
 "first schema revision", `SequenceNumber::first()` communicates "first recorded event", and
@@ -515,6 +634,22 @@ These value objects have named static factories that carry semantic meaning: `Re
 allowed `new Revision(value: 1)` at call sites, which bypasses the semantic intent and mixes raw construction with
 factory conventions. A private constructor forces all creation through the factories, making the intent visible at
 every call site. The `of()` factory on `Revision` and `SequenceNumber` covers the loading-from-persistence path.
+
+### 09. Should I add `identity()`, `aggregateType()`, or `toSnapshot()` to my `DomainEvent`?
+
+No. These three concerns live elsewhere:
+
+- **Identity and aggregate type** are envelope metadata. They are added by the aggregate when it builds
+  the `EventRecord` (see `AggregateRootBehavior::buildEventRecord`) and are accessed on the consumer
+  side through the envelope, not the event.
+- **Serialization** is an infrastructure concern. The event remains a pure PHP object; serialization
+  happens in the outbox writer and the consumer deserializer, both of which live in the consumer
+  project.
+
+A `DomainEvent` that grows methods like `identity()`, `aggregateType()`, or `toSnapshot()` is duplicating
+envelope data already on the `EventRecord` and pulling infrastructure into the domain layer. If you find
+yourself reaching for these methods, the likely root cause is that consumer code is not unwrapping the
+envelope correctly. See the *Consuming events* section above for the intended consumer-side pattern.
 
 ## License
 
