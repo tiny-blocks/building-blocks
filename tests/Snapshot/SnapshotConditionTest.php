@@ -7,20 +7,20 @@ namespace Test\TinyBlocks\BuildingBlocks\Snapshot;
 use PHPUnit\Framework\TestCase;
 use Test\TinyBlocks\BuildingBlocks\Models\Cart;
 use Test\TinyBlocks\BuildingBlocks\Models\CartId;
-use Test\TinyBlocks\BuildingBlocks\Models\EveryTwoEvents;
+use TinyBlocks\BuildingBlocks\Snapshot\SnapshotEvery;
 
 final class SnapshotConditionTest extends TestCase
 {
-    public function testConditionHoldsAtInitialSequence(): void
+    public function testConditionDoesNotHoldAtInitialSequence(): void
     {
         /** @Given a blank cart at sequence number zero */
         $cart = Cart::blank(identity: new CartId(value: 'cart-1'));
 
         /** @When asking the condition whether to snapshot */
-        $shouldSnapshot = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
+        $shouldSnapshot = SnapshotEvery::events(count: 2)->shouldSnapshot(aggregate: $cart);
 
-        /** @Then the condition holds because zero is divisible by two */
-        self::assertTrue($shouldSnapshot);
+        /** @Then the condition does not hold at zero */
+        self::assertFalse($shouldSnapshot);
     }
 
     public function testConditionDoesNotHoldAfterOneEvent(): void
@@ -32,13 +32,13 @@ final class SnapshotConditionTest extends TestCase
         $cart->addProduct(productId: 'prod-1');
 
         /** @When asking the condition whether to snapshot */
-        $shouldSnapshot = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
+        $shouldSnapshot = SnapshotEvery::events(count: 2)->shouldSnapshot(aggregate: $cart);
 
         /** @Then the condition does not hold */
         self::assertFalse($shouldSnapshot);
     }
 
-    public function testConditionHoldsAgainAfterTwoEvents(): void
+    public function testConditionHoldsAfterTwoEvents(): void
     {
         /** @Given a blank cart */
         $cart = Cart::blank(identity: new CartId(value: 'cart-3'));
@@ -50,9 +50,9 @@ final class SnapshotConditionTest extends TestCase
         $cart->addProduct(productId: 'prod-2');
 
         /** @When asking the condition whether to snapshot */
-        $shouldSnapshot = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
+        $shouldSnapshot = SnapshotEvery::events(count: 2)->shouldSnapshot(aggregate: $cart);
 
-        /** @Then the condition holds again at the next even step */
+        /** @Then the condition holds at the first positive multiple */
         self::assertTrue($shouldSnapshot);
     }
 
@@ -71,7 +71,7 @@ final class SnapshotConditionTest extends TestCase
         $cart->addProduct(productId: 'prod-3');
 
         /** @When asking the condition whether to snapshot */
-        $shouldSnapshot = new EveryTwoEvents()->shouldSnapshot(aggregate: $cart);
+        $shouldSnapshot = SnapshotEvery::events(count: 2)->shouldSnapshot(aggregate: $cart);
 
         /** @Then the condition does not hold at an odd step */
         self::assertFalse($shouldSnapshot);

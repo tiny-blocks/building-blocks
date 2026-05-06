@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TinyBlocks\BuildingBlocks\Aggregate;
 
 use TinyBlocks\BuildingBlocks\Entity\Identity;
+use TinyBlocks\BuildingBlocks\Event\DomainEvent;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
 use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
@@ -27,6 +28,18 @@ use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
  */
 interface EventSourcingRoot extends AggregateRoot
 {
+    /**
+     * Returns the explicit map of event class names to handler callables.
+     *
+     * <p>When the returned array is empty, the trait falls back to the implicit
+     * convention <code>when&lt;EventShortName&gt;</code>. When the array is
+     * non-empty, it is the authoritative source: only events whose class names
+     * appear as keys can be applied; absence triggers an exception.</p>
+     *
+     * @return array<class-string<DomainEvent>, callable>
+     */
+    public function eventHandlers(): array;
+
     /**
      * Returns the events recorded during the current unit of work.
      *
@@ -59,6 +72,18 @@ interface EventSourcingRoot extends AggregateRoot
      * @throws MissingIdentityProperty When the property referenced by <code>identityName()</code> does not exist.
      */
     public static function reconstitute(Identity $identity, iterable $records, ?Snapshot $snapshot = null): static;
+
+    /**
+     * Returns the aggregate state to persist in a snapshot.
+     *
+     * <p>The default implementation provided by {@see EventSourcingRootBehavior} returns all object
+     * properties except <code>recordedEvents</code> (transient buffer) and <code>sequenceNumber</code>
+     * (already a first-class field on the snapshot). Override to exclude infrastructure properties
+     * (loggers, caches, etc.) or to include only a curated subset of state.</p>
+     *
+     * @return array<string, mixed> Keyed by property name.
+     */
+    public function getSnapshotState(): array;
 
     /**
      * Restores aggregate state from the given snapshot.

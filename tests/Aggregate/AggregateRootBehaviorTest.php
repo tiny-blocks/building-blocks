@@ -26,19 +26,19 @@ final class AggregateRootBehaviorTest extends TestCase
 
     public function testGetModelVersionReflectsDeclaredConstant(): void
     {
-        /** @Given an aggregate declaring MODEL_VERSION = 1 */
+        /** @Given an aggregate with model version 1 */
         $cart = Cart::blank(identity: new CartId(value: 'cart-2'));
 
         /** @When retrieving the model version */
         $version = $cart->getModelVersion();
 
-        /** @Then the version reflects the constant */
+        /** @Then the version reflects the declared value */
         self::assertSame(1, $version->value);
     }
 
     public function testGetModelVersionDefaultsToZeroWhenUndefined(): void
     {
-        /** @Given an aggregate without MODEL_VERSION constant */
+        /** @Given an aggregate with the default model version */
         $order = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'pen');
 
         /** @When retrieving the model version */

@@ -6,6 +6,8 @@ namespace Test\TinyBlocks\BuildingBlocks\Entity;
 
 use PHPUnit\Framework\TestCase;
 use Test\TinyBlocks\BuildingBlocks\Models\AppointmentId;
+use Test\TinyBlocks\BuildingBlocks\Models\Cart;
+use Test\TinyBlocks\BuildingBlocks\Models\CartId;
 use Test\TinyBlocks\BuildingBlocks\Models\Order;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderWithMissingIdentityProperty;
@@ -37,7 +39,19 @@ final class EntityBehaviorTest extends TestCase
         $name = $order->getIdentityName();
 
         /** @Then it matches the value returned by identityName() */
-        self::assertSame('orderId', $name);
+        self::assertSame('id', $name);
+    }
+
+    public function testGetIdentityNameReturnsOverriddenPropertyName(): void
+    {
+        /** @Given a blank Cart with an explicit identityName override */
+        $cart = Cart::blank(identity: new CartId(value: 'cart-identity'));
+
+        /** @When retrieving the identity property name */
+        $name = $cart->getIdentityName();
+
+        /** @Then it matches the overridden value */
+        self::assertSame('cartId', $name);
     }
 
     public function testGetIdentityValueReturnsScalarForSingleIdentity(): void

@@ -8,7 +8,10 @@ use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
 
 trait EntityBehavior
 {
-    abstract protected function identityName(): string;
+    protected function identityName(): string
+    {
+        return 'id';
+    }
 
     public function getIdentityName(): string
     {

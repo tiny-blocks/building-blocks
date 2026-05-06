@@ -9,8 +9,8 @@ use ReflectionClass;
 use TinyBlocks\BuildingBlocks\Entity\EntityBehavior;
 use TinyBlocks\BuildingBlocks\Event\DomainEvent;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
+use TinyBlocks\BuildingBlocks\Event\EventRecords;
 use TinyBlocks\BuildingBlocks\Event\EventType;
-use TinyBlocks\BuildingBlocks\Event\Revision;
 use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
 use TinyBlocks\BuildingBlocks\Event\SnapshotData;
 use TinyBlocks\Time\Instant;
@@ -18,6 +18,8 @@ use TinyBlocks\Time\Instant;
 trait AggregateRootBehavior
 {
     use EntityBehavior;
+
+    private EventRecords $recordedEvents;
 
     private SequenceNumber $sequenceNumber;
 
@@ -46,6 +48,13 @@ trait AggregateRootBehavior
         $this->sequenceNumber = $this->getSequenceNumber()->next();
     }
 
+    public function recordedEvents(): EventRecords
+    {
+        $records = $this->recordedEvents ?? EventRecords::createFromEmpty();
+
+        return EventRecords::createFrom(elements: $records);
+    }
+
     protected function generateSnapshotData(): SnapshotData
     {
         $state = get_object_vars($this);
@@ -54,14 +63,14 @@ trait AggregateRootBehavior
         return new SnapshotData(payload: $state);
     }
 
-    protected function buildEventRecord(DomainEvent $event, Revision $revision): EventRecord
+    protected function buildEventRecord(DomainEvent $event): EventRecord
     {
         return new EventRecord(
             id: Uuid::uuid4(),
             type: EventType::fromEvent(event: $event),
             event: $event,
             identity: $this->getIdentity(),
-            revision: $revision,
+            revision: $event->revision(),
             occurredOn: Instant::now(),
             snapshotData: $this->generateSnapshotData(),
             aggregateType: $this->buildAggregateName(),

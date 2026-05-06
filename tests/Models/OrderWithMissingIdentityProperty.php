@@ -6,7 +6,6 @@ namespace Test\TinyBlocks\BuildingBlocks\Models;
 
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRootBehavior;
-use TinyBlocks\BuildingBlocks\Event\Revision;
 
 final class OrderWithMissingIdentityProperty implements EventualAggregateRoot
 {
@@ -14,7 +13,7 @@ final class OrderWithMissingIdentityProperty implements EventualAggregateRoot
 
     public function ship(): void
     {
-        $this->push(event: new OrderShipped(carrier: 'DHL'), revision: Revision::initial());
+        $this->push(event: new OrderShipped(carrier: 'DHL'));
     }
 
     protected function identityName(): string

@@ -6,7 +6,6 @@ namespace Test\TinyBlocks\BuildingBlocks\Models;
 
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRootBehavior;
-use TinyBlocks\BuildingBlocks\Event\Revision;
 
 final class Order implements EventualAggregateRoot
 {
@@ -14,15 +13,15 @@ final class Order implements EventualAggregateRoot
 
     private string $status = 'draft';
 
-    private function __construct(private OrderId $orderId)
+    private function __construct(private OrderId $id)
     {
     }
 
     public static function place(OrderId $orderId, string $item): Order
     {
-        $order = new Order(orderId: $orderId);
+        $order = new Order(id: $orderId);
         $order->status = 'placed';
-        $order->push(event: new OrderPlaced(item: $item), revision: Revision::initial());
+        $order->push(event: new OrderPlaced(item: $item));
 
         return $order;
     }
@@ -30,16 +29,11 @@ final class Order implements EventualAggregateRoot
     public function ship(string $carrier): void
     {
         $this->status = 'shipped';
-        $this->push(event: new OrderShipped(carrier: $carrier), revision: Revision::initial());
+        $this->push(event: new OrderShipped(carrier: $carrier));
     }
 
     public function getStatus(): string
     {
         return $this->status;
-    }
-
-    protected function identityName(): string
-    {
-        return 'orderId';
     }
 }
