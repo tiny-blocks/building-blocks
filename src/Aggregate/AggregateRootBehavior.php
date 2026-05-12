@@ -12,7 +12,7 @@ use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
 use TinyBlocks\BuildingBlocks\Event\EventType;
 use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
-use TinyBlocks\BuildingBlocks\Event\SnapshotData;
+use TinyBlocks\BuildingBlocks\Snapshot\SnapshotData;
 use TinyBlocks\Time\Instant;
 
 trait AggregateRootBehavior
@@ -23,29 +23,37 @@ trait AggregateRootBehavior
 
     private SequenceNumber $sequenceNumber;
 
-    public function getSequenceNumber(): SequenceNumber
+    public function sequenceNumber(): SequenceNumber
     {
         return $this->sequenceNumber ?? SequenceNumber::initial();
     }
 
-    public function getModelVersion(): SequenceNumber
+    public function modelVersion(): ModelVersion
     {
-        return SequenceNumber::of(value: $this->modelVersion());
+        return ModelVersion::initial();
     }
 
-    public function buildAggregateName(): string
+    public function aggregateName(): string
     {
-        return new ReflectionClass(static::class)->getShortName();
-    }
-
-    protected function modelVersion(): int
-    {
-        return 0;
+        return new ReflectionClass(objectOrClass: static::class)->getShortName();
     }
 
     protected function nextSequenceNumber(): void
     {
-        $this->sequenceNumber = $this->getSequenceNumber()->next();
+        $this->sequenceNumber = $this->sequenceNumber()->next();
+    }
+
+    protected function generateSnapshotData(): SnapshotData
+    {
+        return new SnapshotData(payload: $this->snapshotState());
+    }
+
+    protected function snapshotState(): array
+    {
+        $state = get_object_vars($this);
+        unset($state['recordedEvents'], $state['sequenceNumber']);
+
+        return $state;
     }
 
     public function recordedEvents(): EventRecords
@@ -55,26 +63,18 @@ trait AggregateRootBehavior
         return EventRecords::createFrom(elements: $records);
     }
 
-    protected function generateSnapshotData(): SnapshotData
-    {
-        $state = get_object_vars($this);
-        unset($state['recordedEvents']);
-
-        return new SnapshotData(payload: $state);
-    }
-
     protected function buildEventRecord(DomainEvent $event): EventRecord
     {
         return new EventRecord(
             id: Uuid::uuid4(),
             type: EventType::fromEvent(event: $event),
             event: $event,
-            identity: $this->getIdentity(),
+            identity: $this->identity(),
             revision: $event->revision(),
             occurredOn: Instant::now(),
             snapshotData: $this->generateSnapshotData(),
-            aggregateType: $this->buildAggregateName(),
-            sequenceNumber: $this->getSequenceNumber()
+            aggregateType: $this->aggregateName(),
+            sequenceNumber: $this->sequenceNumber()
         );
     }
 }

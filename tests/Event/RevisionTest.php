@@ -83,6 +83,96 @@ final class RevisionTest extends TestCase
         self::assertFalse($areEqual);
     }
 
+    public function testIsAfterReturnsTrueWhenValueIsGreater(): void
+    {
+        /** @Given a revision with a higher value */
+        $higher = Revision::of(value: 3);
+
+        /** @And a revision with a lower value */
+        $lower = Revision::of(value: 1);
+
+        /** @When checking if higher is after lower */
+        $isAfter = $higher->isAfter(other: $lower);
+
+        /** @Then the result is true */
+        self::assertTrue($isAfter);
+    }
+
+    public function testIsAfterReturnsFalseWhenValueIsEqual(): void
+    {
+        /** @Given two revisions with equal values */
+        $first = Revision::of(value: 2);
+
+        /** @And a matching counterpart */
+        $second = Revision::of(value: 2);
+
+        /** @When checking if first is after second */
+        $isAfter = $first->isAfter(other: $second);
+
+        /** @Then the result is false */
+        self::assertFalse($isAfter);
+    }
+
+    public function testIsAfterReturnsFalseWhenValueIsLower(): void
+    {
+        /** @Given a revision with a lower value */
+        $lower = Revision::of(value: 1);
+
+        /** @And a revision with a higher value */
+        $higher = Revision::of(value: 3);
+
+        /** @When checking if lower is after higher */
+        $isAfter = $lower->isAfter(other: $higher);
+
+        /** @Then the result is false */
+        self::assertFalse($isAfter);
+    }
+
+    public function testIsBeforeReturnsTrueWhenValueIsLower(): void
+    {
+        /** @Given a revision with a lower value */
+        $lower = Revision::of(value: 1);
+
+        /** @And a revision with a higher value */
+        $higher = Revision::of(value: 3);
+
+        /** @When checking if lower is before higher */
+        $isBefore = $lower->isBefore(other: $higher);
+
+        /** @Then the result is true */
+        self::assertTrue($isBefore);
+    }
+
+    public function testIsBeforeReturnsFalseWhenValueIsEqual(): void
+    {
+        /** @Given two revisions with equal values */
+        $first = Revision::of(value: 2);
+
+        /** @And a matching counterpart */
+        $second = Revision::of(value: 2);
+
+        /** @When checking if first is before second */
+        $isBefore = $first->isBefore(other: $second);
+
+        /** @Then the result is false */
+        self::assertFalse($isBefore);
+    }
+
+    public function testIsBeforeReturnsFalseWhenValueIsGreater(): void
+    {
+        /** @Given a revision with a higher value */
+        $higher = Revision::of(value: 3);
+
+        /** @And a revision with a lower value */
+        $lower = Revision::of(value: 1);
+
+        /** @When checking if higher is before lower */
+        $isBefore = $higher->isBefore(other: $lower);
+
+        /** @Then the result is false */
+        self::assertFalse($isBefore);
+    }
+
     #[DataProvider('invalidValues')]
     public function testOfRejectsNonPositiveValue(int $invalidValue): void
     {

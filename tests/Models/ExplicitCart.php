@@ -29,7 +29,7 @@ final class ExplicitCart implements EventSourcingRoot
 
     public function applySnapshot(Snapshot $snapshot): void
     {
-        $this->productIds = $snapshot->getAggregateState()['productIds'] ?? [];
+        $this->productIds = $snapshot->aggregateState()['productIds'] ?? [];
     }
 
     public function eventHandlers(): array
@@ -47,12 +47,12 @@ final class ExplicitCart implements EventSourcingRoot
     /**
      * @return list<string>
      */
-    public function getProductIds(): array
+    public function productIds(): array
     {
         return $this->productIds;
     }
 
-    protected function identityName(): string
+    protected function identityProperty(): string
     {
         return 'cartId';
     }

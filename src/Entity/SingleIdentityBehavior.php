@@ -10,7 +10,7 @@ trait SingleIdentityBehavior
 {
     use ValueObjectBehavior;
 
-    public function getIdentityValue(): mixed
+    public function identityValue(): mixed
     {
         $properties = get_object_vars($this);
 

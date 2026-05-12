@@ -12,7 +12,7 @@ use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventType;
 use TinyBlocks\BuildingBlocks\Event\Revision;
 use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
-use TinyBlocks\BuildingBlocks\Event\SnapshotData;
+use TinyBlocks\BuildingBlocks\Snapshot\SnapshotData;
 use TinyBlocks\Time\Instant;
 
 final class EventRecordTest extends TestCase
@@ -137,5 +137,75 @@ final class EventRecordTest extends TestCase
 
         /** @Then they are not equal */
         self::assertFalse($areEqual);
+    }
+
+    public function testOfFactoryBuildsRecordWithRequiredFields(): void
+    {
+        /** @Given required fields for a record built via the factory */
+        $orderId = new OrderId(value: 'ord-of-1');
+        $placedEvent = new OrderPlaced(item: 'notebook');
+        $sequenceNumber = SequenceNumber::first();
+
+        /** @When building the record via the factory */
+        $record = EventRecord::of(
+            event: $placedEvent,
+            identity: $orderId,
+            aggregateType: 'Order',
+            sequenceNumber: $sequenceNumber
+        );
+
+        /** @Then the envelope carries the expected metadata */
+        self::assertSame('OrderPlaced', $record->type->value);
+        self::assertSame(1, $record->revision->value);
+        self::assertSame($placedEvent, $record->event);
+        self::assertSame($orderId, $record->identity);
+        self::assertSame('Order', $record->aggregateType);
+        self::assertSame($sequenceNumber, $record->sequenceNumber);
+    }
+
+    public function testOfFactoryUsesProvidedOptionalFields(): void
+    {
+        /** @Given a specific id, timestamp, and snapshot data */
+        $id = Uuid::uuid4();
+        $orderId = new OrderId(value: 'ord-of-2');
+        $placedEvent = new OrderPlaced(item: 'pen');
+        $occurredOn = Instant::now();
+        $snapshotData = new SnapshotData(payload: ['status' => 'placed']);
+        $sequenceNumber = SequenceNumber::first();
+
+        /** @When building the record via the factory with all optional fields */
+        $record = EventRecord::of(
+            event: $placedEvent,
+            identity: $orderId,
+            aggregateType: 'Order',
+            sequenceNumber: $sequenceNumber,
+            id: $id,
+            occurredOn: $occurredOn,
+            snapshotData: $snapshotData
+        );
+
+        /** @Then the optional fields are applied exactly */
+        self::assertSame($id, $record->id);
+        self::assertSame($occurredOn, $record->occurredOn);
+        self::assertSame($snapshotData, $record->snapshotData);
+    }
+
+    public function testOfFactoryDefaultsSnapshotDataToEmptyArray(): void
+    {
+        /** @Given required fields only */
+        $orderId = new OrderId(value: 'ord-of-3');
+        $placedEvent = new OrderPlaced(item: 'lamp');
+        $sequenceNumber = SequenceNumber::first();
+
+        /** @When building the record without providing snapshot data */
+        $record = EventRecord::of(
+            event: $placedEvent,
+            identity: $orderId,
+            aggregateType: 'Order',
+            sequenceNumber: $sequenceNumber
+        );
+
+        /** @Then the snapshot data payload is empty */
+        self::assertSame([], $record->snapshotData->toArray());
     }
 }

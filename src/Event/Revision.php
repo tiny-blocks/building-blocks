@@ -28,4 +28,14 @@ final readonly class Revision implements ValueObject
     {
         return new Revision(value: $value);
     }
+
+    public function isAfter(Revision $other): bool
+    {
+        return $this->value > $other->value;
+    }
+
+    public function isBefore(Revision $other): bool
+    {
+        return $this->value < $other->value;
+    }
 }

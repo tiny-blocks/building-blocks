@@ -36,7 +36,7 @@ final class SnapshotterBehaviorTest extends TestCase
         $snapshotter->take(aggregate: $cart);
 
         /** @Then the persisted snapshot carries the aggregate's type */
-        self::assertSame('Cart', $snapshotter->lastSnapshot()->getType());
+        self::assertSame('Cart', $snapshotter->lastSnapshot()->type());
     }
 
     public function testPersistedSnapshotReflectsTheAggregateSequenceNumber(): void
@@ -51,7 +51,7 @@ final class SnapshotterBehaviorTest extends TestCase
         $snapshotter->take(aggregate: $cart);
 
         /** @Then the persisted snapshot carries the aggregate's sequence number */
-        self::assertSame(2, $snapshotter->lastSnapshot()->getSequenceNumber()->value);
+        self::assertSame(2, $snapshotter->lastSnapshot()->sequenceNumber()->value);
     }
 
     public function testPersistedSnapshotReflectsTheAggregateIdentity(): void
@@ -64,6 +64,6 @@ final class SnapshotterBehaviorTest extends TestCase
         $snapshotter->take(aggregate: $cart);
 
         /** @Then the persisted snapshot carries the aggregate id */
-        self::assertSame('cart-4', $snapshotter->lastSnapshot()->getAggregateId());
+        self::assertSame('cart-4', $snapshotter->lastSnapshot()->aggregateId());
     }
 }

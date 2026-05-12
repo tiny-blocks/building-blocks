@@ -16,7 +16,7 @@ final class OrderWithMissingIdentityProperty implements EventualAggregateRoot
         $this->push(event: new OrderShipped(carrier: 'DHL'));
     }
 
-    protected function identityName(): string
+    protected function identityProperty(): string
     {
         return 'nonExistentProperty';
     }

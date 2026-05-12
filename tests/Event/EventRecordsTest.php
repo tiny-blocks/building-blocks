@@ -13,7 +13,7 @@ use TinyBlocks\BuildingBlocks\Event\EventRecords;
 use TinyBlocks\BuildingBlocks\Event\EventType;
 use TinyBlocks\BuildingBlocks\Event\Revision;
 use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
-use TinyBlocks\BuildingBlocks\Event\SnapshotData;
+use TinyBlocks\BuildingBlocks\Snapshot\SnapshotData;
 use TinyBlocks\Time\Instant;
 
 final class EventRecordsTest extends TestCase

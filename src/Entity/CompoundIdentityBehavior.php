@@ -10,7 +10,7 @@ trait CompoundIdentityBehavior
 {
     use ValueObjectBehavior;
 
-    public function getIdentityValue(): mixed
+    public function identityValue(): mixed
     {
         return get_object_vars($this);
     }

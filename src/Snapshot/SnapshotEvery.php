@@ -23,7 +23,7 @@ final readonly class SnapshotEvery implements SnapshotCondition
 
     public function shouldSnapshot(EventSourcingRoot $aggregate): bool
     {
-        $value = $aggregate->getSequenceNumber()->value;
+        $value = $aggregate->sequenceNumber()->value;
 
         return $value > 0 && $value % $this->count === 0;
     }

@@ -31,9 +31,4 @@ final class Order implements EventualAggregateRoot
         $this->status = 'shipped';
         $this->push(event: new OrderShipped(carrier: $carrier));
     }
-
-    public function getStatus(): string
-    {
-        return $this->status;
-    }
 }

@@ -8,14 +8,9 @@ use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
 
 trait EntityBehavior
 {
-    protected function identityName(): string
+    public function identityName(): string
     {
-        return 'id';
-    }
-
-    public function getIdentityName(): string
-    {
-        $name = $this->identityName();
+        $name = $this->identityProperty();
 
         if (!property_exists($this, $name)) {
             throw new MissingIdentityProperty(className: static::class, propertyName: $name);
@@ -24,23 +19,28 @@ trait EntityBehavior
         return $name;
     }
 
-    public function getIdentity(): Identity
+    protected function identityProperty(): string
     {
-        return $this->{$this->getIdentityName()};
+        return 'id';
     }
 
-    public function getIdentityValue(): mixed
+    public function identity(): Identity
     {
-        return $this->getIdentity()->getIdentityValue();
+        return $this->{$this->identityName()};
+    }
+
+    public function identityValue(): mixed
+    {
+        return $this->identity()->identityValue();
     }
 
     public function sameIdentityOf(Entity $other): bool
     {
-        return $this->identityEquals(other: $other->getIdentity());
+        return $this->identityEquals(other: $other->identity());
     }
 
     public function identityEquals(Identity $other): bool
     {
-        return $this->getIdentity()->equals(other: $other);
+        return $this->identity()->equals(other: $other);
     }
 }
