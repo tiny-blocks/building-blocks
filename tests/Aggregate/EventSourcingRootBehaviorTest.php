@@ -27,7 +27,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart = Cart::blank(identity: $cartId);
 
         /** @Then the aggregate starts at sequence number zero */
-        self::assertSame(0, $cart->getSequenceNumber()->value);
+        self::assertSame(0, $cart->sequenceNumber()->value);
     }
 
     public function testBlankAggregateStartsWithEmptyDomainState(): void
@@ -39,7 +39,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart = Cart::blank(identity: $cartId);
 
         /** @Then the aggregate's domain state is empty */
-        self::assertSame([], $cart->getProductIds());
+        self::assertSame([], $cart->productIds());
     }
 
     public function testBlankAggregateCarriesTheGivenIdentity(): void
@@ -51,7 +51,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart = Cart::blank(identity: $cartId);
 
         /** @Then the aggregate exposes the given identity */
-        self::assertSame($cartId, $cart->getIdentity());
+        self::assertSame($cartId, $cart->identity());
     }
 
     public function testBlankAggregateStartsWithNoRecordedEvents(): void
@@ -75,7 +75,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart->addProduct(productId: 'prod-1');
 
         /** @Then the domain state reflects the event */
-        self::assertSame(['prod-1'], $cart->getProductIds());
+        self::assertSame(['prod-1'], $cart->productIds());
     }
 
     public function testDomainOperationAdvancesSequenceNumber(): void
@@ -90,7 +90,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart->addProduct(productId: 'prod-2');
 
         /** @Then the sequence number equals the number of events */
-        self::assertSame(2, $cart->getSequenceNumber()->value);
+        self::assertSame(2, $cart->sequenceNumber()->value);
     }
 
     public function testDomainOperationAppendsToRecordedEvents(): void
@@ -141,7 +141,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
 
         /** @Then the replayed state preserves event order */
-        self::assertSame(['prod-1', 'prod-2'], $reconstituted->getProductIds());
+        self::assertSame(['prod-1', 'prod-2'], $reconstituted->productIds());
     }
 
     public function testReconstitutePreservesEventOrderForDistinctivelyOrderedStream(): void
@@ -165,7 +165,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
 
         /** @Then the replayed state preserves the exact insertion order */
-        self::assertSame(['zebra', 'apple', 'mango'], $reconstituted->getProductIds());
+        self::assertSame(['zebra', 'apple', 'mango'], $reconstituted->productIds());
     }
 
     public function testReconstituteAdvancesSequenceNumberToLastEvent(): void
@@ -180,7 +180,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
 
         /** @Then the sequence number equals the last event's */
-        self::assertSame(2, $reconstituted->getSequenceNumber()->value);
+        self::assertSame(2, $reconstituted->sequenceNumber()->value);
     }
 
     public function testReconstituteWithEmptyStreamYieldsBlankState(): void
@@ -192,7 +192,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: []);
 
         /** @Then the state matches a blank aggregate */
-        self::assertSame([], $reconstituted->getProductIds());
+        self::assertSame([], $reconstituted->productIds());
     }
 
     public function testReconstituteWithEmptyStreamYieldsInitialSequenceNumber(): void
@@ -204,7 +204,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: []);
 
         /** @Then the sequence number remains at the initial value */
-        self::assertSame(0, $reconstituted->getSequenceNumber()->value);
+        self::assertSame(0, $reconstituted->sequenceNumber()->value);
     }
 
     public function testReconstituteFromSnapshotRestoresDomainState(): void
@@ -225,7 +225,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: [], snapshot: $snapshot);
 
         /** @Then the domain state is fully restored */
-        self::assertSame(['prod-snapshot'], $reconstituted->getProductIds());
+        self::assertSame(['prod-snapshot'], $reconstituted->productIds());
     }
 
     public function testReconstituteFromSnapshotAppliesTheSnapshotSequenceNumber(): void
@@ -246,7 +246,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: [], snapshot: $snapshot);
 
         /** @Then the sequence number matches the snapshot's */
-        self::assertSame(1, $reconstituted->getSequenceNumber()->value);
+        self::assertSame(1, $reconstituted->sequenceNumber()->value);
     }
 
     public function testReconstituteCombinesSnapshotWithLaterEvents(): void
@@ -269,7 +269,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         /** @And the records after the snapshot filtered out */
         $laterRecords = $cart->recordedEvents()->filter(
             predicates: static fn($record): bool => $record->sequenceNumber->isAfter(
-                other: $snapshot->getSequenceNumber()
+                other: $snapshot->sequenceNumber()
             )
         );
 
@@ -277,7 +277,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: $laterRecords, snapshot: $snapshot);
 
         /** @Then the full state is restored */
-        self::assertSame(['prod-1', 'prod-2'], $reconstituted->getProductIds());
+        self::assertSame(['prod-1', 'prod-2'], $reconstituted->productIds());
     }
 
     public function testReconstituteCombinedWithSnapshotAndLaterEventsAdvancesSequence(): void
@@ -300,7 +300,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         /** @And the records after the snapshot filtered out */
         $laterRecords = $cart->recordedEvents()->filter(
             predicates: static fn($record): bool => $record->sequenceNumber->isAfter(
-                other: $snapshot->getSequenceNumber()
+                other: $snapshot->sequenceNumber()
             )
         );
 
@@ -308,7 +308,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: $laterRecords, snapshot: $snapshot);
 
         /** @Then the sequence number reflects the last applied event */
-        self::assertSame(2, $reconstituted->getSequenceNumber()->value);
+        self::assertSame(2, $reconstituted->sequenceNumber()->value);
     }
 
     public function testReconstitutedAggregateHasNoRecordedEvents(): void
@@ -335,7 +335,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart->addProduct(productId: 'prod-explicit');
 
         /** @Then the product appears in the aggregate state */
-        self::assertSame(['prod-explicit'], $cart->getProductIds());
+        self::assertSame(['prod-explicit'], $cart->productIds());
     }
 
     public function testRevisionOverrideIsCarriedOnEventRecord(): void

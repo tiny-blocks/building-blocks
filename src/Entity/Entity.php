@@ -13,7 +13,7 @@ use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
  * across distinct representations and lifecycle transitions. Two entities are equal when their
  * identities are equal, regardless of attribute differences.</p>
  *
- * <p>Concrete entities implement the protected <code>identityName()</code> method returning the property
+ * <p>Concrete entities implement the protected <code>identityProperty()</code> method returning the property
  * that holds their {@see Identity}. The default behavior uses reflection to resolve and compare it.</p>
  *
  * @see Eric Evans, <em>Domain-Driven Design: Tackling Complexity in the Heart of Software</em>
@@ -25,17 +25,17 @@ interface Entity
      * Returns the Identity that uniquely identifies this entity.
      *
      * @return Identity The identity instance held by this entity.
-     * @throws MissingIdentityProperty When the property referenced by <code>identityName()</code> does not exist.
+     * @throws MissingIdentityProperty When the property referenced by <code>identityProperty()</code> does not exist.
      */
-    public function getIdentity(): Identity;
+    public function identity(): Identity;
 
     /**
      * Returns the name of the property that holds this entity's Identity.
      *
-     * @return string The property name, resolved from <code>identityName()</code>.
-     * @throws MissingIdentityProperty When the property referenced by <code>identityName()</code> does not exist.
+     * @return string The property name, resolved from <code>identityProperty()</code>.
+     * @throws MissingIdentityProperty When the property referenced by <code>identityProperty()</code> does not exist.
      */
-    public function getIdentityName(): string;
+    public function identityName(): string;
 
     /**
      * Returns the raw value of this entity's identity.
@@ -45,7 +45,7 @@ interface Entity
      *
      * @return mixed The raw identity value.
      */
-    public function getIdentityValue(): mixed;
+    public function identityValue(): mixed;
 
     /**
      * Checks whether this entity and the given one share the same identity.

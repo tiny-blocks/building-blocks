@@ -6,6 +6,7 @@ namespace Test\TinyBlocks\BuildingBlocks\Models;
 
 use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRootBehavior;
+use TinyBlocks\BuildingBlocks\Aggregate\ModelVersion;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
 final class Cart implements EventSourcingRoot
@@ -34,26 +35,26 @@ final class Cart implements EventSourcingRoot
 
     public function applySnapshot(Snapshot $snapshot): void
     {
-        $state = $snapshot->getAggregateState();
+        $state = $snapshot->aggregateState();
         $this->productIds = $state['productIds'] ?? [];
     }
 
     /**
      * @return list<string>
      */
-    public function getProductIds(): array
+    public function productIds(): array
     {
         return $this->productIds;
     }
 
-    protected function identityName(): string
+    protected function identityProperty(): string
     {
         return 'cartId';
     }
 
-    protected function modelVersion(): int
+    public function modelVersion(): ModelVersion
     {
-        return 1;
+        return ModelVersion::of(value: 1);
     }
 
     protected function whenProductAdded(ProductAdded $event): void

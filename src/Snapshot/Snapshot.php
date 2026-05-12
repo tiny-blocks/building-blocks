@@ -42,35 +42,35 @@ final readonly class Snapshot implements ValueObject
     public static function fromAggregate(EventSourcingRoot $aggregate): Snapshot
     {
         return new Snapshot(
-            type: $aggregate->buildAggregateName(),
+            type: $aggregate->aggregateName(),
             createdAt: Instant::now(),
-            aggregateId: $aggregate->getIdentityValue(),
-            aggregateState: $aggregate->getSnapshotState(),
-            sequenceNumber: $aggregate->getSequenceNumber()
+            aggregateId: $aggregate->identityValue(),
+            aggregateState: $aggregate->snapshotState(),
+            sequenceNumber: $aggregate->sequenceNumber()
         );
     }
 
-    public function getType(): string
+    public function type(): string
     {
         return $this->type;
     }
 
-    public function getCreatedAt(): Instant
+    public function createdAt(): Instant
     {
         return $this->createdAt;
     }
 
-    public function getAggregateId(): mixed
+    public function aggregateId(): mixed
     {
         return $this->aggregateId;
     }
 
-    public function getAggregateState(): array
+    public function aggregateState(): array
     {
         return $this->aggregateState;
     }
 
-    public function getSequenceNumber(): SequenceNumber
+    public function sequenceNumber(): SequenceNumber
     {
         return $this->sequenceNumber;
     }

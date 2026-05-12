@@ -12,61 +12,61 @@ use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
 
 final class AggregateRootBehaviorTest extends TestCase
 {
-    public function testGetSequenceNumberIsZeroForBlankAggregate(): void
+    public function testSequenceNumberIsZeroForBlankAggregate(): void
     {
         /** @Given a freshly instantiated aggregate with no events */
         $cart = Cart::blank(identity: new CartId(value: 'cart-1'));
 
         /** @When retrieving the sequence number */
-        $sequenceNumber = $cart->getSequenceNumber();
+        $sequenceNumber = $cart->sequenceNumber();
 
         /** @Then it is zero */
         self::assertSame(0, $sequenceNumber->value);
     }
 
-    public function testGetModelVersionReflectsDeclaredConstant(): void
+    public function testModelVersionReflectsDeclaredValue(): void
     {
         /** @Given an aggregate with model version 1 */
         $cart = Cart::blank(identity: new CartId(value: 'cart-2'));
 
         /** @When retrieving the model version */
-        $version = $cart->getModelVersion();
+        $version = $cart->modelVersion();
 
         /** @Then the version reflects the declared value */
         self::assertSame(1, $version->value);
     }
 
-    public function testGetModelVersionDefaultsToZeroWhenUndefined(): void
+    public function testModelVersionDefaultsToZeroWhenUndefined(): void
     {
         /** @Given an aggregate with the default model version */
         $order = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'pen');
 
         /** @When retrieving the model version */
-        $version = $order->getModelVersion();
+        $version = $order->modelVersion();
 
         /** @Then the default is zero */
         self::assertSame(0, $version->value);
     }
 
-    public function testBuildAggregateNameForEventSourcedAggregate(): void
+    public function testAggregateNameForEventSourcedAggregate(): void
     {
         /** @Given a Cart aggregate */
         $cart = Cart::blank(identity: new CartId(value: 'cart-3'));
 
-        /** @When building the aggregate name */
-        $name = $cart->buildAggregateName();
+        /** @When retrieving the aggregate name */
+        $name = $cart->aggregateName();
 
         /** @Then it matches the short class name */
         self::assertSame('Cart', $name);
     }
 
-    public function testBuildAggregateNameForOutboxAggregate(): void
+    public function testAggregateNameForOutboxAggregate(): void
     {
         /** @Given an Order aggregate */
         $order = Order::place(orderId: new OrderId(value: 'ord-2'), item: 'lamp');
 
-        /** @When building the aggregate name */
-        $name = $order->buildAggregateName();
+        /** @When retrieving the aggregate name */
+        $name = $order->aggregateName();
 
         /** @Then it matches the short class name */
         self::assertSame('Order', $name);

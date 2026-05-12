@@ -12,7 +12,7 @@ namespace TinyBlocks\BuildingBlocks\Entity;
  * single-value and composite identities.</p>
  *
  * <p>Implementations should declare exactly one property holding the scalar value; the default trait
- * reads it by reflection and returns it from <code>getIdentityValue()</code>.</p>
+ * reads it by reflection and returns it from <code>identityValue()</code>.</p>
  */
 interface SingleIdentity extends Identity
 {

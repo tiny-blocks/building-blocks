@@ -11,7 +11,7 @@ namespace TinyBlocks\BuildingBlocks\Entity;
  * unique (for example <code>(tenantId, appointmentId)</code> in multi-tenant contexts). Not a concept
  * from Evans.</p>
  *
- * <p>All declared properties participate in the identity: <code>getIdentityValue()</code> returns them
+ * <p>All declared properties participate in the identity: <code>identityValue()</code> returns them
  * as an associative array keyed by property name.</p>
  */
 interface CompoundIdentity extends Identity

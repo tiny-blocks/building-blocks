@@ -9,25 +9,24 @@
     + [Aggregate](#aggregate)
     + [Domain events with transactional outbox](#domain-events-with-transactional-outbox)
     + [Event sourcing](#event-sourcing)
-    + [Consuming events](#consuming-events)
     + [Snapshots](#snapshots)
-        - [Built-in conditions](#built-in-conditions)
     + [Upcasting](#upcasting)
-        - [Defining an upcaster](#defining-an-upcaster)
-        - [Upcasting an event](#upcasting-an-event)
-        - [Chaining upcasters](#chaining-upcasters)
-        - [Reconstituting from an iterable](#reconstituting-from-an-iterable)
-        - [Default values for new fields](#default-values-for-new-fields)
 * [FAQ](#faq)
 * [License](#license)
 * [Contributing](#contributing)
 
 ## Overview
 
-Implements tactical DDD building blocks for PHP, covering entities, single and compound identities, aggregate roots,
-domain events, event records, snapshots, and upcasters. Supports both the transactional outbox pattern and event
-sourcing through sibling aggregate variants. Persistence-agnostic and PSR-14 friendly, keeping infrastructure concerns
-out of the domain layer.
+The `Building Blocks` library provides the tactical design building blocks of Domain-Driven Design: `Entity`,
+`Identity`, `AggregateRoot`, and the infrastructure required to carry domain events through a transactional outbox
+or an event-sourced store.
+
+It is persistence-agnostic and framework-agnostic. It depends only on the other `tiny-blocks` primitives
+(`immutable-object`, `value-object`, `collection`, `time`) and `ramsey/uuid` for event identifiers.
+
+Domain events defined here are plain PHP objects fully compatible with any PSR-14 dispatcher. The library does not
+replace PSR-14, it defines what flows through it. Serialization to wire formats is delegated to adapters such as
+[`tiny-blocks/outbox`](https://github.com/tiny-blocks/outbox).
 
 ## Installation
 
@@ -46,13 +45,12 @@ The library exposes three styles of aggregate modeling through sibling interface
 
 ### Entity
 
-Every entity exposes identity through `EntityBehavior`. The protected `identityName()` method returns the name of
-the property that holds the `Identity` and defaults to `'id'`. Override it only when the property has a different
-name.
+Every entity declares which property holds its `Identity`. By default, the property is named `id`, aggregates with a
+differently named property override `identityProperty()`.
 
 #### Single-field identity
 
-* `SingleIdentity`: identity backed by a single scalar value (UUID, auto-increment integer, etc.).
+* `SingleIdentity`: identity backed by a single scalar value (UUID, auto-increment integer, slug).
 
   ```php
   use TinyBlocks\BuildingBlocks\Entity\SingleIdentity;
@@ -68,7 +66,7 @@ name.
   }
 
   $orderId = new OrderId(value: 'ord-1');
-  $orderId->getIdentityValue();
+  $orderId->identityValue();
   ```
 
 #### Compound identity
@@ -91,13 +89,13 @@ name.
   }
 
   $appointmentId = new AppointmentId(tenantId: 'tenant-1', appointmentId: 'apt-1');
-  $appointmentId->getIdentityValue();
+  $appointmentId->identityValue();
   ```
 
-#### Identity access
+#### Identity access on entities
 
-* `getIdentity`, `getIdentityValue`, `sameIdentityOf`, `identityEquals`: provided by `EntityBehavior` for any entity
-  that implements `identityName()`.
+* `identity()`, `identityValue()`, `sameIdentityOf()`, `identityEquals()`: provided by `EntityBehavior` for any
+  entity that declares its identity property.
 
   ```php
   use TinyBlocks\BuildingBlocks\Aggregate\AggregateRoot;
@@ -107,84 +105,86 @@ name.
   {
       use AggregateRootBehavior;
 
-      private function __construct(private UserId $userId, private string $email)
+      private function __construct(private UserId $id, private string $email)
       {
-      }
-
-      protected function identityName(): string
-      {
-          return 'userId';
       }
   }
 
+  $user->identity();
+  $user->identityValue();
   $user->sameIdentityOf(other: $otherUser);
   $user->identityEquals(other: new UserId(value: 'usr-1'));
   ```
 
-### Aggregate
-
-`AggregateRoot` adds two pragmatic fields to Evans' aggregate: a monotonic `SequenceNumber` for optimistic concurrency
-control and a `ModelVersion` for schema evolution of the aggregate type itself.
-
-* `getSequenceNumber`: the current sequence number, starting at zero for a blank aggregate.
-
-  ```php
-  use TinyBlocks\BuildingBlocks\Aggregate\AggregateRoot;
-  use TinyBlocks\BuildingBlocks\Aggregate\AggregateRootBehavior;
-
-  final class User implements AggregateRoot
-  {
-      use AggregateRootBehavior;
-
-      protected function identityName(): string
-      {
-          return 'userId';
-      }
-  }
-
-  $user->getSequenceNumber();
-  ```
-
-* `getModelVersion`: resolved from the protected `modelVersion()` method, defaults to zero when not overridden.
+* Override `identityProperty()` only when the identity property has a name other than `id`:
 
   ```php
   final class Cart implements AggregateRoot
   {
       use AggregateRootBehavior;
 
-      protected function identityName(): string
+      private CartId $cartId;
+
+      protected function identityProperty(): string
       {
           return 'cartId';
       }
+  }
+  ```
 
-      protected function modelVersion(): int
+### Aggregate
+
+`AggregateRoot` adds two pragmatic fields to Evans' aggregate: a monotonic `SequenceNumber` for optimistic
+concurrency control, and a `ModelVersion` for schema evolution of the aggregate type.
+
+* `sequenceNumber()`: the current sequence number, starting at zero for a blank aggregate and advancing by one for
+  every recorded event.
+
+  ```php
+  $user->sequenceNumber();
+  ```
+
+* `modelVersion()`: typed as `ModelVersion`. Defaults to `ModelVersion::initial()` (value `0`). Override on
+  aggregates that have a versioned schema.
+
+  ```php
+  final class Cart implements AggregateRoot
+  {
+      use AggregateRootBehavior;
+
+      public function modelVersion(): ModelVersion
       {
-          return 1;
+          return ModelVersion::of(value: 2);
       }
   }
 
-  $cart->getModelVersion();
+  $cart->modelVersion();
   ```
 
-* `buildAggregateName`: short class name, used as the aggregate type identifier on each `EventRecord`.
+* `aggregateName()`: short class name, used as the aggregate type identifier on each `EventRecord`.
 
   ```php
-  $user->buildAggregateName();
+  $user->aggregateName();
   ```
 
 ### Domain events with transactional outbox
 
-`EventualAggregateRoot` records domain events during the unit of work. State is the source of truth; events are
+`EventualAggregateRoot` records domain events during the unit of work. State is the source of truth, events are
 emitted as side effects and must be delivered at-least-once.
+
+Aggregates of this type are **use-once**: after the application service drains `recordedEvents()` into the outbox,
+the aggregate instance must be discarded. The recorded-events buffer is never cleared, re-saving the same instance
+fails by design with a duplicate-event error from the outbox.
 
 #### Declaring events
 
-* `DomainEvent`: interface declaring `revision()`. A domain event is a plain PHP object. Use
-  `DomainEventBehavior` to get the default revision of 1; override `revision()` only when bumping schema.
+* `DomainEvent`: contract for a fact that happened in the domain. The only required method is `revision()`,
+  defaulted to `Revision::initial()` by `DomainEventBehavior`. Override only when bumping the event schema.
 
   ```php
   use TinyBlocks\BuildingBlocks\Event\DomainEvent;
   use TinyBlocks\BuildingBlocks\Event\DomainEventBehavior;
+  use TinyBlocks\BuildingBlocks\Event\Revision;
 
   final readonly class OrderPlaced implements DomainEvent
   {
@@ -196,18 +196,14 @@ emitted as side effects and must be delivered at-least-once.
   }
   ```
 
-  When a schema change requires a new revision, override `revision()`:
+  Bumping a revision:
 
   ```php
-  use TinyBlocks\BuildingBlocks\Event\DomainEvent;
-  use TinyBlocks\BuildingBlocks\Event\DomainEventBehavior;
-  use TinyBlocks\BuildingBlocks\Event\Revision;
-
   final readonly class OrderPlacedV2 implements DomainEvent
   {
       use DomainEventBehavior;
 
-      public function __construct(public string $item, public string $currency)
+      public function __construct(public string $item, public int $quantity)
       {
       }
 
@@ -218,10 +214,20 @@ emitted as side effects and must be delivered at-least-once.
   }
   ```
 
+  Comparing revisions:
+
+  ```php
+  $previous = Revision::initial();
+  $current = Revision::of(value: 2);
+
+  $current->isAfter(other: $previous);   # true
+  $previous->isBefore(other: $current);  # true
+  ```
+
 #### Emitting events from the aggregate
 
-* `push`: protected method on `EventualAggregateRootBehavior`. Increments the sequence number and appends a
-  fully-built `EventRecord` to the recorded buffer. The `Revision` is read from the event via `revision()`.
+* `push()`: protected method on `EventualAggregateRootBehavior`. Increments the sequence number and appends a
+  fully-built `EventRecord` to the recorded buffer.
 
   ```php
   use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
@@ -235,9 +241,9 @@ emitted as side effects and must be delivered at-least-once.
       {
       }
 
-      public static function place(OrderId $orderId, string $item): Order
+      public static function place(OrderId $id, string $item): Order
       {
-          $order = new Order(id: $orderId);
+          $order = new Order(id: $id);
           $order->push(event: new OrderPlaced(item: $item));
 
           return $order;
@@ -245,30 +251,46 @@ emitted as side effects and must be delivered at-least-once.
   }
   ```
 
-#### Draining events in the repository
+#### Draining events
 
-* `recordedEvents`: returns a fresh copy of the buffer, safe to iterate without mutating the aggregate.
-* `clearRecordedEvents`: discards the buffer, typically called after persisting the events.
+* `recordedEvents()`: returns a copy of the buffer, safe to iterate. The aggregate's own buffer is not mutated by
+  external iteration. The buffer is **never cleared** by the library, the aggregate is use-once.
 
   ```php
-  $order = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'book');
+  $order = Order::place(id: new OrderId(value: 'ord-1'), item: 'book');
 
   foreach ($order->recordedEvents() as $record) {
       $outbox->append(record: $record);
   }
+  ```
 
-  $order->clearRecordedEvents();
+#### Constructing event records directly
+
+* `EventRecord::of()`: factory for the rare cases that require building an envelope outside the aggregate boundary,
+  typically test code that fabricates envelopes as inputs to handlers, or consumer-side code deserializing payloads
+  from a wire format. The `id`, `occurredOn`, and `snapshotData` parameters fall back to sensible defaults
+  (`Uuid::uuid4()`, `Instant::now()`, an empty payload) when omitted.
+
+  ```php
+  use TinyBlocks\BuildingBlocks\Event\EventRecord;
+  use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
+
+  $record = EventRecord::of(
+      event: new OrderPlaced(item: 'book'),
+      identity: new OrderId(value: 'ord-1'),
+      aggregateType: 'Order',
+      sequenceNumber: SequenceNumber::first()
+  );
   ```
 
 ### Event sourcing
 
-`EventSourcingRoot` stores no state of its own; state is derived by replaying the event stream.
+`EventSourcingRoot` stores no state of its own, state is derived by replaying the event stream.
 
 #### Applying events to state
 
-* `when`: protected method that records the event and immediately applies it to state. By default, it dispatches
-  to a `when<EventShortName>` method. Alternatively, register an explicit handler map via `eventHandlers()`.
-  Override `identityName()` only when the identity property is not named `id` (for example, `Cart` uses `cartId`).
+* `when()`: protected method that records the event and immediately applies it to state by dispatching to a
+  `when<EventShortName>` method by reflection.
 
   ```php
   use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
@@ -279,7 +301,7 @@ emitted as side effects and must be delivered at-least-once.
   {
       use EventSourcingRootBehavior;
 
-      private CartId $cartId;
+      private CartId $id;
       private array $productIds = [];
 
       public function addProduct(string $productId): void
@@ -289,12 +311,7 @@ emitted as side effects and must be delivered at-least-once.
 
       public function applySnapshot(Snapshot $snapshot): void
       {
-          $this->productIds = $snapshot->getAggregateState()['productIds'] ?? [];
-      }
-
-      protected function identityName(): string
-      {
-          return 'cartId';
+          $this->productIds = $snapshot->aggregateState()['productIds'] ?? [];
       }
 
       protected function whenProductAdded(ProductAdded $event): void
@@ -304,52 +321,36 @@ emitted as side effects and must be delivered at-least-once.
   }
   ```
 
-  To register handlers explicitly instead of relying on the `when<EventShortName>` convention, override
-  `eventHandlers()`. When the map is non-empty, only listed event classes are dispatched; any other event
-  causes a `LogicException`.
+* `eventHandlers()`: explicit registration. Returns a map of `class-string<DomainEvent>` to callable. When the map
+  is non-empty, the trait dispatches through it instead of using the implicit `when<X>` convention. Use this when
+  handler names should not follow the convention or when static analysis on dispatch is desired.
 
   ```php
-  use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
-  use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRootBehavior;
-  use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
-
-  final class Cart implements EventSourcingRoot
+  final class ExplicitCart implements EventSourcingRoot
   {
       use EventSourcingRootBehavior;
 
-      private CartId $cartId;
+      private CartId $id;
       private array $productIds = [];
-
-      public function addProduct(string $productId): void
-      {
-          $this->when(event: new ProductAdded(productId: $productId));
-      }
-
-      public function applySnapshot(Snapshot $snapshot): void
-      {
-          $this->productIds = $snapshot->getAggregateState()['productIds'] ?? [];
-      }
 
       public function eventHandlers(): array
       {
           return [
-              ProductAdded::class => function (ProductAdded $event): void {
-                  $this->productIds[] = $event->productId;
-              }
+              ProductAdded::class => $this->onProductAdded(...)
           ];
       }
 
-      protected function identityName(): string
+      private function onProductAdded(ProductAdded $event): void
       {
-          return 'cartId';
+          $this->productIds[] = $event->productId;
       }
   }
   ```
 
 #### Creating a blank aggregate
 
-* `blank`: factory that instantiates the aggregate without invoking its constructor. All state must come from events
-  or from a snapshot.
+* `blank()`: factory that instantiates the aggregate via reflection without invoking its constructor. All state
+  must come from events or from a snapshot.
 
   ```php
   $cart = Cart::blank(identity: new CartId(value: 'cart-1'));
@@ -357,8 +358,8 @@ emitted as side effects and must be delivered at-least-once.
 
 #### Replaying an event stream
 
-* `reconstitute`: replays an ordered stream of `EventRecord` instances, optionally starting from a snapshot to skip
-  earlier events. When a snapshot is provided, its sequence number is authoritative.
+* `reconstitute()`: replays an ordered stream of `EventRecord` instances, optionally starting from a snapshot to
+  skip earlier events. When a snapshot is provided, its sequence number is authoritative.
 
   ```php
   $cart = Cart::reconstitute(identity: new CartId(value: 'cart-1'), records: $records);
@@ -372,61 +373,58 @@ emitted as side effects and must be delivered at-least-once.
   );
   ```
 
-### Consuming events
-
-Domain events travel between services through whatever broker the consumer chooses (SQS, Kafka, RabbitMQ, etc.).
-The library is intentionally silent about the transport: it produces and consumes `EventRecord` envelopes,
-which the consumer is responsible for serializing and deserializing.
-
-A typical consumer integration deserializes the broker payload back into an `EventRecord` and dispatches
-the wrapped `DomainEvent` to a handler. Sketch of the consumer side:
-
-```php
-$record = new EventRecord(
-    id: Uuid::fromString($payload['event_id']),
-    type: EventType::fromString(value: $payload['event_type']),
-    event: $eventDeserializer->deserialize(type: $payload['event_type'], data: $payload['event_data']),
-    identity: $identityDeserializer->deserialize(
-        type: $payload['aggregate_type'],
-        value: $payload['aggregate_id']
-    ),
-    revision: Revision::of(value: $payload['revision']),
-    occurredOn: Instant::fromString($payload['occurred_on']),
-    snapshotData: new SnapshotData(payload: json_decode($payload['snapshot'], true)),
-    aggregateType: $payload['aggregate_type'],
-    sequenceNumber: SequenceNumber::of(value: $payload['sequence_number'])
-);
-
-$handler->handle(record: $record);
-```
-
-The aggregate identity, aggregate type, sequence number, and revision are all available on the envelope.
-Handlers receive the full `EventRecord` rather than just the `DomainEvent`, so they can route or filter
-based on envelope metadata without that metadata leaking into the event itself.
-
-The library does not ship deserializers because the format depends entirely on the consumer's transport
-and storage choices. Consumers typically maintain a small registry mapping `EventType` values to concrete
-`DomainEvent` classes, and a similar mapping for identity types.
-
 ### Snapshots
 
 Snapshots let the event store skip replay of early events when reconstituting a long-lived aggregate.
 
-#### Capturing a snapshot
+#### Capturing aggregate state
 
-* `Snapshot::fromAggregate`: reads all declared properties except `recordedEvents` and `sequenceNumber`. Both are
-  tracked outside `aggregateState` because the snapshot has dedicated fields for them.
+* `SnapshotData`: immutable record of aggregate state at a point in time. Exposes `toArray()` for read access. The
+  library deliberately does not provide encoding methods, serialization is the responsibility of the adapter that
+  persists or transmits the data.
+
+  ```php
+  use TinyBlocks\BuildingBlocks\Snapshot\SnapshotData;
+
+  $data = new SnapshotData(payload: ['status' => 'placed']);
+  $data->toArray();
+  ```
+
+* Aggregates control what fields enter the snapshot by overriding `getSnapshotState()`. The default captures every
+  declared property except `recordedEvents` and `sequenceNumber` (which are tracked separately on the envelope).
+
+  ```php
+  final class CartWithLogger implements EventSourcingRoot
+  {
+      use EventSourcingRootBehavior;
+
+      private CartId $id;
+      private array $productIds = [];
+      private LoggerInterface $logger;
+
+      protected function getSnapshotState(): array
+      {
+          return ['id' => $this->id, 'productIds' => $this->productIds];
+      }
+  }
+  ```
+
+#### Taking a snapshot
+
+* `Snapshot::fromAggregate()`: captures the aggregate's current state via the `getSnapshotState()` hook.
 
   ```php
   use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
   $snapshot = Snapshot::fromAggregate(aggregate: $cart);
+  $snapshot->aggregateState();
+  $snapshot->sequenceNumber();
   ```
 
-#### Persisting a snapshot
+#### Persisting snapshots
 
 * `Snapshotter`: port for snapshot persistence. The `SnapshotterBehavior` trait captures the snapshot and delegates
-  storage to a concrete `persist` hook.
+  storage to a `persist` hook implemented by the consumer.
 
   ```php
   use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
@@ -439,51 +437,38 @@ Snapshots let the event store skip replay of early events when reconstituting a 
 
       protected function persist(Snapshot $snapshot): void
       {
-          file_put_contents('/var/snapshots/cart.json', $snapshot->getAggregateState());
+          file_put_contents('/var/snapshots/cart.json', json_encode($snapshot->aggregateState()));
       }
   }
 
-  $snapshotter = new FileSnapshotter();
-  $snapshotter->take(aggregate: $cart);
-  ```
-
-#### Deciding when to snapshot
-
-* `SnapshotCondition`: strategy for deciding whether a snapshot should be taken at a given point.
-
-  ```php
-  use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
-  use TinyBlocks\BuildingBlocks\Snapshot\SnapshotCondition;
-
-  final class EveryHundredEvents implements SnapshotCondition
-  {
-      public function shouldSnapshot(EventSourcingRoot $aggregate): bool
-      {
-          return $aggregate->getSequenceNumber()->value % 100 === 0;
-      }
-  }
+  new FileSnapshotter()->take(aggregate: $cart);
   ```
 
 #### Built-in conditions
 
-Two ready-made implementations ship with the library:
-
-* `SnapshotEvery::events(count: N)` — returns `true` when the sequence number is a positive multiple of `N`.
-  Throws `InvalidArgumentException` when `N < 1`.
+* `SnapshotCondition`: strategy for deciding whether a snapshot should be taken at a given point.
+* `SnapshotEvery::events(count: N)`: ready-made condition that triggers every `N` events (skipping sequence `0`).
+* `SnapshotNever::create()`: condition that never triggers, useful in tests and when snapshotting is explicitly
+  disabled.
 
   ```php
   use TinyBlocks\BuildingBlocks\Snapshot\SnapshotEvery;
-
-  $condition = SnapshotEvery::events(count: 100);
-  $condition->shouldSnapshot(aggregate: $cart); # true at sequences 100, 200, 300, …
-  ```
-
-* `SnapshotNever::create()` — always returns `false`. Useful in tests or to explicitly disable snapshotting.
-
-  ```php
   use TinyBlocks\BuildingBlocks\Snapshot\SnapshotNever;
 
-  $condition = SnapshotNever::create();
+  $every100 = SnapshotEvery::events(count: 100);
+  $never = SnapshotNever::create();
+  ```
+
+  Custom conditions implement the interface directly:
+
+  ```php
+  final class WhenStatusChanges implements SnapshotCondition
+  {
+      public function shouldSnapshot(EventSourcingRoot $aggregate): bool
+      {
+          # domain-specific logic
+      }
+  }
   ```
 
 ### Upcasting
@@ -492,8 +477,10 @@ Upcasters migrate serialized events across schema changes without touching the e
 
 #### Defining an upcaster
 
-* `Upcaster`: transforms one `(type, revision)` pair forward by one step. Chains of upcasters handle multistep
-  evolution. The `SingleUpcasterBehavior` trait binds the upcaster to a specific migration via three class constants.
+* `Upcaster`: transforms one `(type, revision)` pair forward by one step. Returns the event unchanged when the
+  type or revision does not match.
+* `SingleUpcasterBehavior`: binds the upcaster to a specific migration via three class constants and delegates the
+  payload transformation to an abstract `doUpcast()` method.
 
   ```php
   use TinyBlocks\BuildingBlocks\Upcast\SingleUpcasterBehavior;
@@ -514,14 +501,16 @@ Upcasters migrate serialized events across schema changes without touching the e
   }
   ```
 
-#### Upcasting an event
+#### Chaining upcasters
 
-* `upcast`: transforms the event if it matches the expected `(type, revision)`, otherwise returns it unchanged.
+* `Upcasters::chain()`: runs every upcaster in insertion order in a single forward pass. Upcasters whose type or
+  revision does not match pass the event through.
 
   ```php
   use TinyBlocks\BuildingBlocks\Event\EventType;
   use TinyBlocks\BuildingBlocks\Event\Revision;
   use TinyBlocks\BuildingBlocks\Upcast\IntermediateEvent;
+  use TinyBlocks\BuildingBlocks\Upcast\Upcasters;
 
   $event = new IntermediateEvent(
       type: EventType::fromString(value: 'ProductAdded'),
@@ -529,46 +518,18 @@ Upcasters migrate serialized events across schema changes without touching the e
       serializedEvent: ['productId' => 'prod-1']
   );
 
-  $upcasted = new ProductV1Upcaster()->upcast(event: $event);
-  ```
-
-#### Chaining upcasters
-
-* `Upcasters`: ordered collection of `Upcaster` instances. `chain` folds them left-to-right over an
-  `IntermediateEvent`, applying each upcaster in sequence. Upcasters that do not match the current `(type, revision)`
-  pair pass the event through unchanged.
-
-  ```php
-  use TinyBlocks\BuildingBlocks\Upcast\Upcasters;
-
-  $upcasters = Upcasters::createFrom(elements: [
+  $chain = Upcasters::createFrom(elements: [
       new ProductV1Upcaster(),
-      new ProductV2Upcaster(),
+      new ProductV2Upcaster()
   ]);
 
-  $upcasted = $upcasters->chain(event: $event);
-  ```
-
-#### Reconstituting from an iterable
-
-* `IntermediateEvent` implements `ObjectMapper`, so it can be reconstituted from an iterable of typed field values.
-  Pass already-constructed `EventType` and `Revision` instances — the mapper maps each field by name.
-
-  ```php
-  use TinyBlocks\BuildingBlocks\Event\EventType;
-  use TinyBlocks\BuildingBlocks\Event\Revision;
-  use TinyBlocks\BuildingBlocks\Upcast\IntermediateEvent;
-
-  $event = IntermediateEvent::fromIterable(iterable: [
-      'type' => EventType::fromString(value: 'ProductAdded'),
-      'revision' => Revision::of(value: 2),
-      'serializedEvent' => ['productId' => 'prod-1', 'quantity' => 1]
-  ]);
+  $upcasted = $chain->chain(event: $event);
   ```
 
 #### Default values for new fields
 
-* `DefaultValues`: type-to-default-value map for common primitive types, used when an upcast introduces a new field.
+* `DefaultValues::get()`: type-to-default-value map for common primitive types, used when an upcast introduces a
+  new field with a sensible zero-value default.
 
   ```php
   use TinyBlocks\BuildingBlocks\Upcast\DefaultValues;
@@ -578,78 +539,101 @@ Upcasters migrate serialized events across schema changes without touching the e
 
 ## FAQ
 
-### 01. Why does `DomainEvent` only declare `revision()`?
+### 01. Why is `DomainEvent` close to a marker interface?
 
-`DomainEvent` declares one method, `revision()`, because schema versioning is an intrinsic property of the
-event's structure: it tells consumers which fields the event carries and what semantics they have.
-All other concerns — aggregate identity, aggregate type, sequence number, and serialization format —
-belong to `EventRecord`, not to the event itself. Keeping those out of `DomainEvent` prevents
-infrastructure from leaking into the domain model.
+A domain event is a fact about something that happened in the domain. The contract carries only `revision()` so
+the library can route schema migrations through upcasters. Everything else (aggregate identity, sequence number,
+aggregate type, occurrence timestamp) is envelope metadata that belongs to `EventRecord`. Keeping the event itself
+minimal prevents infrastructure concerns from leaking into the domain model.
+
+> Vaughn Vernon, *Implementing Domain-Driven Design* (Addison-Wesley, 2013), Chapter 8, "Domain Events".
 
 ### 02. Why does `EventualAggregateRoot` store `EventRecord` instead of `DomainEvent`?
 
-Only the aggregate has the context needed to build the complete envelope: identity, sequence number, aggregate type
-name. Storing raw events and wrapping them later would either duplicate that context or require a second pass.
-`push` builds the full `EventRecord` immediately, and the outbox adapter reads them as-is with no translation.
+Only the aggregate has the context needed to build the complete envelope: identity, sequence number, aggregate
+type name. Storing raw events and wrapping them later would either duplicate that context or require a second
+pass. `push()` builds the full `EventRecord` immediately, and the outbox adapter reads them as-is with no
+translation.
+
+> Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns* (Addison-Wesley, 2003), "Envelope Wrapper".
 
 ### 03. Why are `EventualAggregateRoot` and `EventSourcingRoot` siblings instead of a hierarchy?
 
-Outbox and event sourcing are mutually exclusive persistence strategies. An aggregate either persists its state and
-emits events as side effects, or persists only its events as the source of truth. A common base beyond `AggregateRoot`
-would imply the two patterns can coexist on the same aggregate, which they cannot.
+Outbox and event sourcing are mutually exclusive persistence strategies. An aggregate either persists its state
+and emits events as side effects, or persists only its events as the source of truth. A common base beyond
+`AggregateRoot` would imply the two patterns can coexist on the same aggregate, which they cannot.
 
-### 04. Why does `blank` skip the constructor?
+> Martin Fowler, *Event Sourcing* (martinfowler.com, 2005).
+> Chris Richardson, *Microservices Patterns* (Manning, 2018), Chapter 3, "Transactional Outbox".
 
-`EventSourcingRootBehavior::blank` instantiates the aggregate via reflection without invoking its constructor because
-all aggregate state in an event-sourced model must come from events or from a snapshot. Any invariants established by
-the constructor would contradict that principle. Concrete aggregates should treat their constructor as private and
-reserved for internal use.
+### 04. Why does `Revision` live on the `DomainEvent` instead of the call site?
 
-### 05. Why are `recordedEvents` and `sequenceNumber` excluded from `Snapshot::aggregateState`?
+The revision of an event is a property of the event's schema. Keeping it on the event means the call site (`push`,
+`when`) does not need to know the schema version, the event class is the single source of truth. Bumping a
+revision is always paired with a payload change (added field, removed field, renamed field), so creating a new
+event class to carry the new revision is the natural unit of work.
 
-`recordedEvents` belongs to the current unit of work, not to the aggregate's intrinsic state. `sequenceNumber` is
-already carried by the snapshot as a first-class field, so duplicating it inside `aggregateState` would force
-consumers to decide which copy is authoritative.
+> Greg Young, *Versioning in an Event Sourced System* (Leanpub, 2017).
 
-### 06. Why are custom exceptions declared under `Internal\Exceptions` instead of the root namespace?
+### 05. Why does `blank()` skip the constructor?
 
-Custom exceptions such as `InvalidEventType`, `InvalidRevision`, `InvalidSequenceNumber`, and
-`MissingIdentityProperty` are implementation details. They extend `InvalidArgumentException` or
-`RuntimeException` from the PHP standard library, so consumers that catch the broad standard types continue to work;
-consumers that need precise handling can catch the specific classes.
+`EventSourcingRootBehavior::blank()` instantiates the aggregate via reflection without invoking its constructor
+because all aggregate state in an event-sourced model must come from events or from a snapshot. Any invariants
+established by the constructor would contradict that principle. Concrete aggregates should treat their constructor
+as private and reserved for internal use during command handling.
 
-### 07. Why did `IDENTITY` and `MODEL_VERSION` move from constants to methods?
+> Greg Young, *CQRS Documents* (2010), "Event Sourcing" section.
 
-Class constants read by reflection inside traits are invisible to static analyzers such as PHPStan and Psalm. Every
-concrete aggregate had to annotate `@phpstan-ignore-next-line` or equivalent suppressions just to satisfy level-9
-analysis. Replacing them with a protected `identityName(): string` method and a protected `modelVersion(): int`
-method makes the contract explicit in PHP's type system: the compiler enforces implementation, IDEs can navigate to
-it, and static analyzers raise no warnings — in the library or at consumer sites.
+### 06. Why doesn't the library serialize envelopes to JSON or any other wire format?
 
-### 08. Why do `Revision`, `SequenceNumber`, and `EventType` now have private constructors?
+Serialization is an infrastructure concern. Putting encoding methods on domain value objects mixes that concern
+into the domain layer, which contradicts the library's persistence-agnostic stance. Adapters such as
+`tiny-blocks/outbox` provide dedicated serializer ports. The domain layer exposes `EventRecord`, `SnapshotData`,
+and the value objects as pure data, downstream adapters decide how to map them onto bytes.
 
-These value objects have named static factories that carry semantic meaning: `Revision::initial()` communicates
-"first schema revision", `SequenceNumber::first()` communicates "first recorded event", and
-`EventType::fromEvent($event)` communicates "derive the type name from this event". Leaving the constructor public
-allowed `new Revision(value: 1)` at call sites, which bypasses the semantic intent and mixes raw construction with
-factory conventions. A private constructor forces all creation through the factories, making the intent visible at
-every call site. The `of()` factory on `Revision` and `SequenceNumber` covers the loading-from-persistence path.
+> Alistair Cockburn, *Hexagonal Architecture* (alistair.cockburn.us, 2005).
 
-### 09. Should I add `identity()`, `aggregateType()`, or `toSnapshot()` to my `DomainEvent`?
+### 07. What is the difference between `ModelVersion` and `SequenceNumber`?
+
+`SequenceNumber` counts events per aggregate instance. It is the basis for optimistic concurrency control: a save
+fails if the sequence number in storage differs from the in-memory sequence the aggregate believed it had.
+
+`ModelVersion` versions the aggregate type itself. When the aggregate schema changes in a backwards-incompatible
+way (a property is removed, renamed, or its semantics shift), bumping the model version gives migration code a
+single source of truth to branch on.
+
+The two are different concepts that happen to share an integer representation. They are typed as separate value
+objects to prevent accidental comparisons across them at compile time.
+
+> Martin Fowler, *Patterns of Enterprise Application Architecture* (Addison-Wesley, 2002), "Optimistic Offline
+> Lock", source of `SequenceNumber` semantics.
+> Greg Young, *Versioning in an Event Sourced System* (Leanpub, 2017), source of `ModelVersion` semantics.
+
+### 08. Why is the `EventualAggregateRoot` use-once?
+
+The recorded-events buffer is never cleared by the library. After the application service drains
+`recordedEvents()` into the outbox, the aggregate instance must be discarded. Re-saving the same instance pushes
+the same envelopes again and deterministically fails with a duplicate-event error from the outbox.
+
+This is intentional. It surfaces re-save bugs at the database layer instead of hiding them via implicit state
+mutation. Applications that genuinely need to mutate the same logical aggregate twice in one process must reload
+from the repository between operations.
+
+> Eric Evans, *Domain-Driven Design* (Addison-Wesley, 2003), Chapter 6, "Aggregates" (single transactional unit
+> per aggregate per request).
+
+### 09. Should I add `identity()`, `aggregateType()`, or `toArray()` to my `DomainEvent`?
 
 No. These three concerns live elsewhere:
 
-- **Identity and aggregate type** are envelope metadata. They are added by the aggregate when it builds
-  the `EventRecord` (see `AggregateRootBehavior::buildEventRecord`) and are accessed on the consumer
-  side through the envelope, not the event.
-- **Serialization** is an infrastructure concern. The event remains a pure PHP object; serialization
-  happens in the outbox writer and the consumer deserializer, both of which live in the consumer
-  project.
+* Identity and aggregate type are envelope metadata. They are added by the aggregate when it builds the
+  `EventRecord` (see `AggregateRootBehavior::buildEventRecord`) and are accessed on the consumer side through the
+  envelope, not the event.
+* Serialization is an infrastructure concern. The event remains a pure PHP object, serialization happens in the
+  outbox writer and the consumer deserializer, both of which live downstream of the library.
 
-A `DomainEvent` that grows methods like `identity()`, `aggregateType()`, or `toSnapshot()` is duplicating
-envelope data already on the `EventRecord` and pulling infrastructure into the domain layer. If you find
-yourself reaching for these methods, the likely root cause is that consumer code is not unwrapping the
-envelope correctly. See the *Consuming events* section above for the intended consumer-side pattern.
+A `DomainEvent` that grows methods like these duplicates envelope data already on the `EventRecord` and pulls
+infrastructure into the domain layer.
 
 ## License
 

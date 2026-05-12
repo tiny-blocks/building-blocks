@@ -9,13 +9,13 @@ use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
 
 final class SingleIdentityBehaviorTest extends TestCase
 {
-    public function testGetIdentityValueReturnsTheSingleScalarField(): void
+    public function testIdentityValueReturnsTheSingleScalarField(): void
     {
         /** @Given a single-field identity */
         $orderId = new OrderId(value: 'ord-1');
 
         /** @When retrieving the identity value */
-        $value = $orderId->getIdentityValue();
+        $value = $orderId->identityValue();
 
         /** @Then the scalar value is returned as-is */
         self::assertSame('ord-1', $value);

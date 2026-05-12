@@ -6,6 +6,7 @@ namespace Test\TinyBlocks\BuildingBlocks\Models;
 
 use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRootBehavior;
+use TinyBlocks\BuildingBlocks\Aggregate\ModelVersion;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
 final class CartWithoutHandler implements EventSourcingRoot
@@ -18,13 +19,13 @@ final class CartWithoutHandler implements EventSourcingRoot
     {
     }
 
-    protected function identityName(): string
+    protected function identityProperty(): string
     {
         return 'cartId';
     }
 
-    protected function modelVersion(): int
+    public function modelVersion(): ModelVersion
     {
-        return 1;
+        return ModelVersion::of(value: 1);
     }
 }

@@ -9,13 +9,13 @@ use Test\TinyBlocks\BuildingBlocks\Models\AppointmentId;
 
 final class CompoundIdentityBehaviorTest extends TestCase
 {
-    public function testGetIdentityValueReturnsAllFieldsAsAssociativeArray(): void
+    public function testIdentityValueReturnsAllFieldsAsAssociativeArray(): void
     {
         /** @Given a compound identity with two fields */
         $appointmentId = new AppointmentId(tenantId: 'tenant-1', appointmentId: 'apt-1');
 
         /** @When retrieving the identity value */
-        $value = $appointmentId->getIdentityValue();
+        $value = $appointmentId->identityValue();
 
         /** @Then both fields are returned in an associative array */
         self::assertSame(['tenantId' => 'tenant-1', 'appointmentId' => 'apt-1'], $value);

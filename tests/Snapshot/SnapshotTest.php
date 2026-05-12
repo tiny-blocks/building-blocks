@@ -26,7 +26,7 @@ final class SnapshotTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
 
         /** @Then the type matches the aggregate's short class name */
-        self::assertSame('Cart', $snapshot->getType());
+        self::assertSame('Cart', $snapshot->type());
     }
 
     public function testFromAggregateCapturesAggregateId(): void
@@ -38,7 +38,7 @@ final class SnapshotTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
 
         /** @Then the aggregate id reflects the identity value */
-        self::assertSame('cart-id-42', $snapshot->getAggregateId());
+        self::assertSame('cart-id-42', $snapshot->aggregateId());
     }
 
     public function testFromAggregateCapturesSequenceNumber(): void
@@ -50,7 +50,7 @@ final class SnapshotTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
 
         /** @Then the sequence number is captured */
-        self::assertSame(2, $snapshot->getSequenceNumber()->value);
+        self::assertSame(2, $snapshot->sequenceNumber()->value);
     }
 
     public function testFromAggregateCapturesCreatedAt(): void
@@ -62,7 +62,7 @@ final class SnapshotTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
 
         /** @Then the createdAt timestamp is set */
-        self::assertInstanceOf(Instant::class, $snapshot->getCreatedAt());
+        self::assertInstanceOf(Instant::class, $snapshot->createdAt());
     }
 
     public function testFromAggregateCarriesDomainFieldsInState(): void
@@ -74,7 +74,7 @@ final class SnapshotTest extends TestCase
         $cart->addProduct(productId: 'prod-x');
 
         /** @When taking a snapshot */
-        $state = Snapshot::fromAggregate(aggregate: $cart)->getAggregateState();
+        $state = Snapshot::fromAggregate(aggregate: $cart)->aggregateState();
 
         /** @Then the state carries the domain fields */
         self::assertSame(['prod-x'], $state['productIds']);
@@ -89,7 +89,7 @@ final class SnapshotTest extends TestCase
         $cart->addProduct(productId: 'prod-x');
 
         /** @When taking a snapshot */
-        $state = Snapshot::fromAggregate(aggregate: $cart)->getAggregateState();
+        $state = Snapshot::fromAggregate(aggregate: $cart)->aggregateState();
 
         /** @Then the transient recording buffer is not part of the persisted state */
         self::assertArrayNotHasKey('recordedEvents', $state);
@@ -104,7 +104,7 @@ final class SnapshotTest extends TestCase
         $cart->addProduct(productId: 'prod-x');
 
         /** @When taking a snapshot */
-        $state = Snapshot::fromAggregate(aggregate: $cart)->getAggregateState();
+        $state = Snapshot::fromAggregate(aggregate: $cart)->aggregateState();
 
         /** @Then the sequence number is not duplicated into the state */
         self::assertArrayNotHasKey('sequenceNumber', $state);
@@ -128,10 +128,10 @@ final class SnapshotTest extends TestCase
         $reconstituted = Cart::reconstitute(identity: $cartId, records: [], snapshot: $snapshot);
 
         /** @Then the reconstituted aggregate carries the same domain state */
-        self::assertSame(['prod-roundtrip'], $reconstituted->getProductIds());
+        self::assertSame(['prod-roundtrip'], $reconstituted->productIds());
     }
 
-    public function testGetSnapshotStateExcludesInfrastructureProperty(): void
+    public function testSnapshotStateExcludesInfrastructureProperty(): void
     {
         /** @Given a blank cart with a logger */
         $cart = CartWithLogger::blank(identity: new CartId(value: 'cart-logger-1'));
@@ -140,10 +140,10 @@ final class SnapshotTest extends TestCase
         $cart->addProduct(productId: 'prod-1');
 
         /** @Then the snapshot state does not contain the log buffer */
-        self::assertArrayNotHasKey('logBuffer', $cart->getSnapshotState());
+        self::assertArrayNotHasKey('logBuffer', $cart->snapshotState());
     }
 
-    public function testGetSnapshotStateIncludesDomainFields(): void
+    public function testSnapshotStateIncludesDomainFields(): void
     {
         /** @Given a blank cart with a logger */
         $cart = CartWithLogger::blank(identity: new CartId(value: 'cart-logger-2'));
@@ -152,7 +152,7 @@ final class SnapshotTest extends TestCase
         $cart->addProduct(productId: 'prod-snapshot');
 
         /** @Then the snapshot state includes the domain fields */
-        self::assertSame(['prod-snapshot'], $cart->getSnapshotState()['productIds']);
+        self::assertSame(['prod-snapshot'], $cart->snapshotState()['productIds']);
     }
 
     public function testFromAggregateWithOverriddenSnapshotStateExcludesInfrastructureProperty(): void
@@ -164,7 +164,7 @@ final class SnapshotTest extends TestCase
         $cart->addProduct(productId: 'prod-x');
 
         /** @Then the snapshot does not carry the log buffer in the aggregate state */
-        self::assertArrayNotHasKey('logBuffer', Snapshot::fromAggregate(aggregate: $cart)->getAggregateState());
+        self::assertArrayNotHasKey('logBuffer', Snapshot::fromAggregate(aggregate: $cart)->aggregateState());
     }
 
     public function testEqualsReturnsTrueForIdenticallyBuiltSnapshots(): void

@@ -39,18 +39,17 @@ interface AggregateRoot extends Entity
      *
      * @return SequenceNumber The current sequence number.
      */
-    public function getSequenceNumber(): SequenceNumber;
+    public function sequenceNumber(): SequenceNumber;
 
     /**
      * Returns the schema version of this aggregate type.
      *
-     * <p>Resolved from the protected <code>modelVersion()</code> method, defaults to <code>0</code>
-     * when the method is not overridden. Used by consumers to migrate aggregate schemas when loading older
-     * persisted state.</p>
+     * <p>Defaults to <code>ModelVersion::initial()</code> (value 0) when not overridden. Used by consumers
+     * to migrate aggregate schemas when loading older persisted state.</p>
      *
-     * @return SequenceNumber The declared model version, or 0 when not overridden.
+     * @return ModelVersion The declared model version.
      */
-    public function getModelVersion(): SequenceNumber;
+    public function modelVersion(): ModelVersion;
 
     /**
      * Returns the short class name of this aggregate.
@@ -60,5 +59,5 @@ interface AggregateRoot extends Entity
      *
      * @return string The short class name.
      */
-    public function buildAggregateName(): string;
+    public function aggregateName(): string;
 }

@@ -54,7 +54,7 @@ interface EventSourcingRoot extends AggregateRoot
      *
      * @param Identity $identity The identity to assign to the new aggregate.
      * @return static A new aggregate in its initial state.
-     * @throws MissingIdentityProperty When the property referenced by <code>identityName()</code> does not exist.
+     * @throws MissingIdentityProperty When the property referenced by <code>identityProperty()</code> does not exist.
      */
     public static function blank(Identity $identity): static;
 
@@ -69,7 +69,7 @@ interface EventSourcingRoot extends AggregateRoot
      * @param iterable<EventRecord> $records The event stream to replay, ordered by sequence number.
      * @param Snapshot|null $snapshot Optional snapshot to restore from before replay.
      * @return static The reconstituted aggregate.
-     * @throws MissingIdentityProperty When the property referenced by <code>identityName()</code> does not exist.
+     * @throws MissingIdentityProperty When the property referenced by <code>identityProperty()</code> does not exist.
      */
     public static function reconstitute(Identity $identity, iterable $records, ?Snapshot $snapshot = null): static;
 
@@ -83,12 +83,12 @@ interface EventSourcingRoot extends AggregateRoot
      *
      * @return array<string, mixed> Keyed by property name.
      */
-    public function getSnapshotState(): array;
+    public function snapshotState(): array;
 
     /**
      * Restores aggregate state from the given snapshot.
      *
-     * <p>Implementations read {@see Snapshot::getAggregateState()} and copy the relevant fields into
+     * <p>Implementations read {@see Snapshot::aggregateState()} and copy the relevant fields into
      * their own properties. The sequence number is applied automatically by
      * <code>reconstitute()</code>; implementations should not touch it.</p>
      *

@@ -10,9 +10,15 @@ use TinyBlocks\BuildingBlocks\Event\EventRecords;
  * Aggregate root variant that records domain events for eventual publication via transactional outbox.
  *
  * <p>State is persisted as the source of truth; events are emitted as side effects and delivered
- * at-least-once to external consumers. The repository is expected to drain
- * <code>recordedEvents()</code> after persisting the aggregate state and then call
- * <code>clearRecordedEvents()</code> to reset the buffer for the next unit of work.</p>
+ * at-least-once to external consumers. The repository drains <code>recordedEvents()</code> after
+ * persisting the aggregate state.</p>
+ *
+ * <p><strong>Use-once contract:</strong> the recorded-events buffer is never cleared. After the
+ * repository drains <code>recordedEvents()</code> and persists the records to the outbox, the aggregate
+ * instance must be discarded. Re-saving the same instance attempts to push the same envelopes again and
+ * fails with a duplicate-event error from the outbox. Applications that need to perform multiple
+ * operations on the same logical aggregate within one process must reload from the repository between
+ * operations.</p>
  *
  * <p>Sibling of {@see EventSourcingRoot}, not a parent. Outbox and event sourcing are mutually exclusive
  * persistence strategies: an aggregate either persists its state and emits events as side effects, or
@@ -25,7 +31,7 @@ use TinyBlocks\BuildingBlocks\Event\EventRecords;
 interface EventualAggregateRoot extends AggregateRoot
 {
     /**
-     * Returns a copy of the events recorded since the last clear.
+     * Returns a copy of all events recorded since the aggregate was created.
      *
      * <p>Always returns a fresh copy: external mutation of the returned collection does not leak into the
      * aggregate's internal buffer.</p>
@@ -33,11 +39,4 @@ interface EventualAggregateRoot extends AggregateRoot
      * @return EventRecords A snapshot of the recorded events, safe to iterate and mutate.
      */
     public function recordedEvents(): EventRecords;
-
-    /**
-     * Discards all recorded events.
-     *
-     * <p>Typically called by the repository after the events have been persisted to the outbox.</p>
-     */
-    public function clearRecordedEvents(): void;
 }

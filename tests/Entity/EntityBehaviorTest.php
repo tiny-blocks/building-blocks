@@ -15,7 +15,7 @@ use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
 
 final class EntityBehaviorTest extends TestCase
 {
-    public function testGetIdentityReturnsHeldIdentity(): void
+    public function testIdentityReturnsHeldIdentity(): void
     {
         /** @Given an order constructed with a known identity */
         $orderId = new OrderId(value: 'ord-1');
@@ -24,55 +24,55 @@ final class EntityBehaviorTest extends TestCase
         $order = Order::place(orderId: $orderId, item: 'book');
 
         /** @When retrieving the identity */
-        $identity = $order->getIdentity();
+        $identity = $order->identity();
 
         /** @Then the same identity instance is returned */
         self::assertSame($orderId, $identity);
     }
 
-    public function testGetIdentityNameReturnsPropertyName(): void
+    public function testIdentityNameReturnsPropertyName(): void
     {
         /** @Given an order aggregate */
         $order = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'pen');
 
         /** @When retrieving the identity property name */
-        $name = $order->getIdentityName();
+        $name = $order->identityName();
 
-        /** @Then it matches the value returned by identityName() */
+        /** @Then it matches the value returned by identityProperty() */
         self::assertSame('id', $name);
     }
 
-    public function testGetIdentityNameReturnsOverriddenPropertyName(): void
+    public function testIdentityNameReturnsOverriddenPropertyName(): void
     {
-        /** @Given a blank Cart with an explicit identityName override */
+        /** @Given a blank Cart with an explicit identityProperty override */
         $cart = Cart::blank(identity: new CartId(value: 'cart-identity'));
 
         /** @When retrieving the identity property name */
-        $name = $cart->getIdentityName();
+        $name = $cart->identityName();
 
         /** @Then it matches the overridden value */
         self::assertSame('cartId', $name);
     }
 
-    public function testGetIdentityValueReturnsScalarForSingleIdentity(): void
+    public function testIdentityValueReturnsScalarForSingleIdentity(): void
     {
         /** @Given an order whose identity is a single-value identifier */
         $order = Order::place(orderId: new OrderId(value: 'ord-42'), item: 'pen');
 
         /** @When retrieving the identity value */
-        $value = $order->getIdentityValue();
+        $value = $order->identityValue();
 
         /** @Then the raw scalar is returned */
         self::assertSame('ord-42', $value);
     }
 
-    public function testGetIdentityValueReturnsAssociativeArrayForCompoundIdentity(): void
+    public function testIdentityValueReturnsAssociativeArrayForCompoundIdentity(): void
     {
         /** @Given a compound identity */
         $appointmentId = new AppointmentId(tenantId: 'tenant-1', appointmentId: 'apt-1');
 
         /** @When retrieving the identity value */
-        $value = $appointmentId->getIdentityValue();
+        $value = $appointmentId->identityValue();
 
         /** @Then an associative array with all fields is returned */
         self::assertSame(['tenantId' => 'tenant-1', 'appointmentId' => 'apt-1'], $value);
@@ -140,7 +140,7 @@ final class EntityBehaviorTest extends TestCase
 
     public function testShipThrowsWhenIdentityPropertyIsMissing(): void
     {
-        /** @Given an aggregate whose identityName() points to a non-existent property */
+        /** @Given an aggregate whose identityProperty() points to a non-existent property */
         $order = new OrderWithMissingIdentityProperty();
 
         /** @Then a MissingIdentityProperty exception carrying the property name is thrown */

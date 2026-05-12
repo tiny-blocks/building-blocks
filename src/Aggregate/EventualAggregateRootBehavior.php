@@ -11,11 +11,6 @@ trait EventualAggregateRootBehavior
 {
     use AggregateRootBehavior;
 
-    public function clearRecordedEvents(): void
-    {
-        $this->recordedEvents = EventRecords::createFromEmpty();
-    }
-
     protected function push(DomainEvent $event): void
     {
         $this->nextSequenceNumber();

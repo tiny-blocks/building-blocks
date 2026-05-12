@@ -18,7 +18,7 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $order = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'book');
 
         /** @When retrieving the sequence number */
-        $sequenceNumber = $order->getSequenceNumber();
+        $sequenceNumber = $order->sequenceNumber();
 
         /** @Then the sequence number is 1 */
         self::assertSame(1, $sequenceNumber->value);
@@ -33,7 +33,7 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $order->ship(carrier: 'DHL');
 
         /** @When retrieving the sequence number */
-        $sequenceNumber = $order->getSequenceNumber();
+        $sequenceNumber = $order->sequenceNumber();
 
         /** @Then the sequence number reflects every emitted event */
         self::assertSame(2, $sequenceNumber->value);
@@ -93,18 +93,6 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         self::assertSame('UPS', $record->event->carrier);
     }
 
-    public function testClearRecordedEventsResetsTheBuffer(): void
-    {
-        /** @Given an order with recorded events */
-        $order = Order::place(orderId: new OrderId(value: 'ord-5'), item: 'desk');
-
-        /** @When clearing the buffer */
-        $order->clearRecordedEvents();
-
-        /** @Then no events remain */
-        self::assertTrue($order->recordedEvents()->isEmpty());
-    }
-
     public function testRecordedEventsReturnsIndependentCopyOnEachCall(): void
     {
         /** @Given an order with one recorded event */
@@ -120,19 +108,20 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         self::assertSame(1, $secondCopy->count());
     }
 
-    public function testRecordedEventsIsEmptyAfterClear(): void
+    public function testBufferAccumulatesAcrossOperationsWithoutClearing(): void
     {
-        /** @Given an order that was placed and immediately cleared */
+        /** @Given a placed order whose events are still buffered */
         $order = Order::place(orderId: new OrderId(value: 'ord-7'), item: 'bottle');
 
-        /** @And the buffer cleared */
-        $order->clearRecordedEvents();
+        /** @And the buffer drained without clearing, simulating a save that reads but does not reset */
+        $firstBatch = $order->recordedEvents();
 
-        /** @When retrieving recorded events */
-        $records = $order->recordedEvents();
+        /** @When a second operation emits a further event on the same instance */
+        $order->ship(carrier: 'DHL');
 
-        /** @Then the collection is empty */
-        self::assertTrue($records->isEmpty());
+        /** @Then the buffer accumulates events from both operations */
+        self::assertSame(2, $order->recordedEvents()->count());
+        self::assertSame(1, $firstBatch->count());
     }
 
     public function testSnapshotDataCapturesDomainStateOnEveryEvent(): void
@@ -157,5 +146,30 @@ final class EventualAggregateRootBehaviorTest extends TestCase
 
         /** @Then the recording buffer is not part of the persisted state */
         self::assertArrayNotHasKey('recordedEvents', $state);
+    }
+
+    public function testSnapshotDataOmitsSequenceNumber(): void
+    {
+        /** @Given an order that emits a placement event */
+        $order = Order::place(orderId: new OrderId(value: 'ord-11'), item: 'mug');
+
+        /** @When inspecting the persistable state attached to the record */
+        $state = $order->recordedEvents()->first()->snapshotData->toArray();
+
+        /** @Then the sequence number is not duplicated in the snapshot payload */
+        self::assertArrayNotHasKey('sequenceNumber', $state);
+    }
+
+    public function testSnapshotDataContainsAllDomainFields(): void
+    {
+        /** @Given a placed order */
+        $order = Order::place(orderId: new OrderId(value: 'ord-12'), item: 'desk');
+
+        /** @When reading the snapshot payload from the first event record */
+        $state = $order->recordedEvents()->first()->snapshotData->toArray();
+
+        /** @Then all domain fields are present in the payload */
+        self::assertArrayHasKey('id', $state);
+        self::assertArrayHasKey('status', $state);
     }
 }

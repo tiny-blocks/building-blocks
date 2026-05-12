@@ -39,7 +39,7 @@ trait EventSourcingRootBehavior
 
         if (!is_null($snapshot)) {
             $aggregate->applySnapshot(snapshot: $snapshot);
-            $aggregate->sequenceNumber = $snapshot->getSequenceNumber();
+            $aggregate->sequenceNumber = $snapshot->sequenceNumber();
         }
 
         foreach ($records as $record) {
@@ -54,7 +54,7 @@ trait EventSourcingRootBehavior
         return [];
     }
 
-    public function getSnapshotState(): array
+    public function snapshotState(): array
     {
         $state = get_object_vars($this);
         unset($state['recordedEvents'], $state['sequenceNumber']);

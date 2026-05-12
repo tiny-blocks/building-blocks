@@ -27,5 +27,5 @@ interface Identity extends ValueObject
      *
      * @return mixed A scalar value for single-field identities, an associative array for composite ones.
      */
-    public function getIdentityValue(): mixed;
+    public function identityValue(): mixed;
 }
