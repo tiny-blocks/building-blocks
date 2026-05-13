@@ -3,6 +3,18 @@
     "description": "Implements tactical DDD building blocks for PHP: entities, aggregate roots, domain events, snapshots, and upcasters.",
     "license": "MIT",
     "type": "library",
+    "keywords": [
+        "ddd",
+        "snapshot",
+        "upcaster",
+        "tiny-blocks",
+        "value-object",
+        "domain-events",
+        "aggregate-root",
+        "event-sourcing",
+        "building-blocks",
+        "domain-driven-design"
+    ],
     "authors": [
         {
             "name": "Gustavo Freze de Araujo Santos",
