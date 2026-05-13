@@ -48,6 +48,11 @@ trait AggregateRootBehavior
         return new SnapshotData(payload: $this->snapshotState());
     }
 
+    protected function reconstituteSequenceNumber(SequenceNumber $sequenceNumber): void
+    {
+        $this->sequenceNumber = $sequenceNumber;
+    }
+
     protected function snapshotState(): array
     {
         $state = get_object_vars($this);

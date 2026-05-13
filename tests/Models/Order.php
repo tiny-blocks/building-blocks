@@ -6,6 +6,7 @@ namespace Test\TinyBlocks\BuildingBlocks\Models;
 
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRootBehavior;
+use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
 
 final class Order implements EventualAggregateRoot
 {
@@ -15,6 +16,13 @@ final class Order implements EventualAggregateRoot
 
     private function __construct(private OrderId $id)
     {
+    }
+
+    public static function reconstitute(OrderId $orderId, SequenceNumber $sequenceNumber): Order
+    {
+        $order = new Order(id: $orderId);
+        $order->reconstituteSequenceNumber(sequenceNumber: $sequenceNumber);
+        return $order;
     }
 
     public static function place(OrderId $orderId, string $item): Order

@@ -9,6 +9,7 @@ use Test\TinyBlocks\BuildingBlocks\Models\Cart;
 use Test\TinyBlocks\BuildingBlocks\Models\CartId;
 use Test\TinyBlocks\BuildingBlocks\Models\Order;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
+use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
 
 final class AggregateRootBehaviorTest extends TestCase
 {
@@ -70,5 +71,29 @@ final class AggregateRootBehaviorTest extends TestCase
 
         /** @Then it matches the short class name */
         self::assertSame('Order', $name);
+    }
+
+    public function testReconstitutedSequenceNumberMatchesPersistedValue(): void
+    {
+        /** @Given an Order reconstituted with a persisted sequence number of 5 */
+        $order = Order::reconstitute(orderId: new OrderId(value: 'ord-3'), sequenceNumber: SequenceNumber::of(value: 5));
+
+        /** @When retrieving the sequence number */
+        $sequenceNumber = $order->sequenceNumber();
+
+        /** @Then it matches the persisted value */
+        self::assertSame(5, $sequenceNumber->value);
+    }
+
+    public function testPushAfterReconstituteAdvancesSequenceByOne(): void
+    {
+        /** @Given an Order reconstituted with a persisted sequence number of 5 */
+        $order = Order::reconstitute(orderId: new OrderId(value: 'ord-4'), sequenceNumber: SequenceNumber::of(value: 5));
+
+        /** @When pushing a new event */
+        $order->ship(carrier: 'FedEx');
+
+        /** @Then the sequence number advances by one */
+        self::assertSame(6, $order->sequenceNumber()->value);
     }
 }
