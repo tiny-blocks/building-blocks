@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace TinyBlocks\BuildingBlocks\Snapshot;
 
 use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\InvalidSnapshotCount;
+use TinyBlocks\BuildingBlocks\Exceptions\InvalidSnapshotCount;
 
 final readonly class SnapshotEvery implements SnapshotCondition
 {
@@ -16,6 +16,13 @@ final readonly class SnapshotEvery implements SnapshotCondition
         }
     }
 
+    /**
+     * Creates a SnapshotEvery condition that triggers every N events.
+     *
+     * @param int $count The number of events between snapshots. Must be at least 1.
+     * @return SnapshotEvery The created condition.
+     * @throws InvalidSnapshotCount If the count is less than 1.
+     */
     public static function events(int $count): SnapshotEvery
     {
         return new SnapshotEvery(count: $count);
@@ -23,7 +30,7 @@ final readonly class SnapshotEvery implements SnapshotCondition
 
     public function shouldSnapshot(EventSourcingRoot $aggregate): bool
     {
-        $value = $aggregate->sequenceNumber()->value;
+        $value = $aggregate->aggregateVersion()->value;
 
         return $value > 0 && $value % $this->count === 0;
     }

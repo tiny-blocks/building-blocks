@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace TinyBlocks\BuildingBlocks\Internal\Exceptions;
+namespace TinyBlocks\BuildingBlocks\Exceptions;
 
 use InvalidArgumentException;
 
@@ -12,6 +12,6 @@ final class InvalidModelVersion extends InvalidArgumentException
     {
         $template = 'Model version must be greater than or equal to 0, got <%d>.';
 
-        parent::__construct(sprintf($template, $value));
+        parent::__construct(message: sprintf($template, $value));
     }
 }

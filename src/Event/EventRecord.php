@@ -6,8 +6,8 @@ namespace TinyBlocks\BuildingBlocks\Event;
 
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
+use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
-use TinyBlocks\BuildingBlocks\Snapshot\SnapshotData;
 use TinyBlocks\Time\Instant;
 use TinyBlocks\Vo\ValueObject;
 use TinyBlocks\Vo\ValueObjectBehavior;
@@ -18,36 +18,44 @@ final readonly class EventRecord implements ValueObject
 
     public function __construct(
         public UuidInterface $id,
-        public EventType $type,
         public DomainEvent $event,
-        public Identity $identity,
         public Revision $revision,
-        public Instant $occurredOn,
-        public SnapshotData $snapshotData,
+        public EventType $eventType,
+        public Instant $occurredAt,
+        public Identity $aggregateId,
         public string $aggregateType,
-        public SequenceNumber $sequenceNumber
+        public AggregateVersion $aggregateVersion
     ) {
     }
 
+    /**
+     * Creates an EventRecord from a domain event and its required envelope fields.
+     *
+     * @param DomainEvent $event The event being recorded.
+     * @param Identity $aggregateId The aggregate identity that produced the event.
+     * @param string $aggregateType The short class name of the aggregate.
+     * @param AggregateVersion $aggregateVersion The aggregate version assigned to this envelope.
+     * @param UuidInterface|null $id Optional explicit identifier. Defaults to a fresh UUIDv4.
+     * @param Instant|null $occurredAt Optional explicit occurrence timestamp. Defaults to now.
+     * @return EventRecord The constructed envelope.
+     */
     public static function of(
         DomainEvent $event,
-        Identity $identity,
+        Identity $aggregateId,
         string $aggregateType,
-        SequenceNumber $sequenceNumber,
+        AggregateVersion $aggregateVersion,
         ?UuidInterface $id = null,
-        ?Instant $occurredOn = null,
-        ?SnapshotData $snapshotData = null
+        ?Instant $occurredAt = null
     ): EventRecord {
         return new EventRecord(
             id: $id ?? Uuid::uuid4(),
-            type: EventType::fromEvent(event: $event),
             event: $event,
-            identity: $identity,
             revision: $event->revision(),
-            occurredOn: $occurredOn ?? Instant::now(),
-            snapshotData: $snapshotData ?? new SnapshotData(payload: []),
+            eventType: EventType::fromEvent(event: $event),
+            occurredAt: $occurredAt ?? Instant::now(),
+            aggregateId: $aggregateId,
             aggregateType: $aggregateType,
-            sequenceNumber: $sequenceNumber
+            aggregateVersion: $aggregateVersion
         );
     }
 }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace TinyBlocks\BuildingBlocks\Internal\Exceptions;
+namespace TinyBlocks\BuildingBlocks\Exceptions;
 
 use InvalidArgumentException;
 
@@ -12,6 +12,6 @@ final class InvalidRevision extends InvalidArgumentException
     {
         $template = 'Revision must be greater than or equal to 1, got <%d>.';
 
-        parent::__construct(sprintf($template, $value));
+        parent::__construct(message: sprintf($template, $value));
     }
 }

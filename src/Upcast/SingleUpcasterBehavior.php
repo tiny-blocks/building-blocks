@@ -23,5 +23,15 @@ trait SingleUpcasterBehavior
             ->withRevision(revision: Revision::of(value: static::TO_REVISION));
     }
 
+    /**
+     * Rewrites the serialized payload of an event being upcast.
+     *
+     * <p>Implemented by the consumer. Invoked by {@see upcast()} only when the event's type and revision
+     * match this upcaster's declared (type, from-revision) pair. The returned array becomes the new
+     * serialized payload at the upcaster's to-revision.</p>
+     *
+     * @param array<string, mixed> $payload The serialized event payload.
+     * @return array<string, mixed> The rewritten payload.
+     */
     abstract protected function rewrite(array $payload): array;
 }

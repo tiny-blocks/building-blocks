@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Entity;
 
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\MissingIdentityProperty;
+use TinyBlocks\BuildingBlocks\Exceptions\MissingIdentityProperty;
 
 /**
  * Object whose identity persists through time and changes of state.
@@ -25,7 +25,7 @@ interface Entity
      * Returns the Identity that uniquely identifies this entity.
      *
      * @return Identity The identity instance held by this entity.
-     * @throws MissingIdentityProperty When the property referenced by <code>identityProperty()</code> does not exist.
+     * @throws MissingIdentityProperty If the property referenced by <code>identityProperty()</code> does not exist.
      */
     public function identity(): Identity;
 
@@ -33,7 +33,7 @@ interface Entity
      * Returns the name of the property that holds this entity's Identity.
      *
      * @return string The property name, resolved from <code>identityProperty()</code>.
-     * @throws MissingIdentityProperty When the property referenced by <code>identityProperty()</code> does not exist.
+     * @throws MissingIdentityProperty If the property referenced by <code>identityProperty()</code> does not exist.
      */
     public function identityName(): string;
 
@@ -48,7 +48,7 @@ interface Entity
     public function identityValue(): mixed;
 
     /**
-     * Checks whether this entity and the given one share the same identity.
+     * Tells whether this entity and the given one share the same identity.
      *
      * @param Entity $other The entity whose identity will be compared.
      * @return bool True when both entities hold equal identities.
@@ -56,7 +56,7 @@ interface Entity
     public function sameIdentityOf(Entity $other): bool;
 
     /**
-     * Checks whether the given Identity is equal to this entity's identity.
+     * Tells whether the given Identity is equal to this entity's identity.
      *
      * @param Identity $other The identity to compare against.
      * @return bool True when the given identity equals this entity's identity.

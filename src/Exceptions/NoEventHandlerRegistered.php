@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace TinyBlocks\BuildingBlocks\Internal\Exceptions;
+namespace TinyBlocks\BuildingBlocks\Exceptions;
 
 use LogicException;
 
@@ -12,6 +12,6 @@ final class NoEventHandlerRegistered extends LogicException
     {
         $template = 'No handler registered for event <%s> in aggregate <%s>.';
 
-        parent::__construct(sprintf($template, $eventClass, $aggregateClass));
+        parent::__construct(message: sprintf($template, $eventClass, $aggregateClass));
     }
 }

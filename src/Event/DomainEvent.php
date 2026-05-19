@@ -12,10 +12,10 @@ namespace TinyBlocks\BuildingBlocks\Event;
  * on a <code>DomainEvent</code> and must not be exposed as accessors on subtypes:</p>
  *
  * <ul>
- *   <li><strong>Aggregate identity</strong> — added by the aggregate when building the {@see EventRecord}.</li>
- *   <li><strong>Aggregate type</strong> — derived from the aggregate's class name into the envelope.</li>
- *   <li><strong>Sequence number</strong> — assigned by the aggregate into the envelope.</li>
- *   <li><strong>Serialization to storage</strong> — responsibility of outbox writers and consumer
+ *   <li><strong>Aggregate identity</strong>: added by the aggregate when building the {@see EventRecord}.</li>
+ *   <li><strong>Aggregate type</strong>: derived from the aggregate's class name into the envelope.</li>
+ *   <li><strong>Sequence number</strong>: assigned by the aggregate into the envelope.</li>
+ *   <li><strong>Serialization to storage</strong>: responsibility of outbox writers and consumer
  *       deserializers, both infrastructure concerns outside this library.</li>
  * </ul>
  *
@@ -35,7 +35,7 @@ interface DomainEvent
     /**
      * Returns the schema revision of this event.
      *
-     * @return Revision The current schema revision; defaults to {@see Revision::initial}.
+     * @return Revision The current schema revision. Defaults to {@see Revision::initial}.
      */
     public function revision(): Revision;
 }

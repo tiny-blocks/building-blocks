@@ -11,7 +11,7 @@ namespace TinyBlocks\BuildingBlocks\Entity;
  * auto-increment integer, slug, etc.). Not a concept from Evans: the book makes no distinction between
  * single-value and composite identities.</p>
  *
- * <p>Implementations should declare exactly one property holding the scalar value; the default trait
+ * <p>Implementations should declare exactly one property holding the scalar value. The default trait
  * reads it by reflection and returns it from <code>identityValue()</code>.</p>
  */
 interface SingleIdentity extends Identity

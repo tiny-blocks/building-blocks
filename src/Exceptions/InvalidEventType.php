@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace TinyBlocks\BuildingBlocks\Internal\Exceptions;
+namespace TinyBlocks\BuildingBlocks\Exceptions;
 
 use InvalidArgumentException;
 
@@ -12,6 +12,6 @@ final class InvalidEventType extends InvalidArgumentException
     {
         $template = 'Event type <%s> does not match the required pattern <%s>.';
 
-        parent::__construct(sprintf($template, $value, $pattern));
+        parent::__construct(message: sprintf($template, $value, $pattern));
     }
 }

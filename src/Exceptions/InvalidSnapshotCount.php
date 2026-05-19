@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace TinyBlocks\BuildingBlocks\Internal\Exceptions;
+namespace TinyBlocks\BuildingBlocks\Exceptions;
 
 use InvalidArgumentException;
 
@@ -12,6 +12,6 @@ final class InvalidSnapshotCount extends InvalidArgumentException
     {
         $template = 'Snapshot count must be at least 1, got <%d>.';
 
-        parent::__construct(sprintf($template, $count));
+        parent::__construct(message: sprintf($template, $count));
     }
 }

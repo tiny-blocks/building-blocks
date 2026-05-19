@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace TinyBlocks\BuildingBlocks\Internal\Exceptions;
+namespace TinyBlocks\BuildingBlocks\Exceptions;
 
 use LogicException;
 
@@ -12,6 +12,6 @@ final class EventHandlerMethodNotFound extends LogicException
     {
         $template = 'Handler method <%s> not found in aggregate <%s>.';
 
-        parent::__construct(sprintf($template, $methodName, $aggregateClass));
+        parent::__construct(message: sprintf($template, $methodName, $aggregateClass));
     }
 }
