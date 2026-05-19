@@ -15,7 +15,6 @@ final class Cart implements EventSourcingRoot
 
     private CartId $cartId;
 
-    /** @var list<string> */
     private array $productIds = [];
 
     public static function withProducts(CartId $cartId, int $count): Cart
@@ -39,9 +38,6 @@ final class Cart implements EventSourcingRoot
         $this->productIds = $state['productIds'] ?? [];
     }
 
-    /**
-     * @return list<string>
-     */
     public function productIds(): array
     {
         return $this->productIds;

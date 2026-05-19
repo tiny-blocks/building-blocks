@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Test\TinyBlocks\BuildingBlocks\Models;
 
+use InvalidArgumentException;
+use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRootBehavior;
-use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
+use TinyBlocks\BuildingBlocks\Entity\Identity;
 
 final class Order implements EventualAggregateRoot
 {
@@ -14,14 +16,24 @@ final class Order implements EventualAggregateRoot
 
     private string $status = 'draft';
 
-    private function __construct(private OrderId $id)
+    private function __construct(private readonly OrderId $id)
     {
     }
 
-    public static function reconstitute(OrderId $orderId, SequenceNumber $sequenceNumber): Order
-    {
-        $order = new Order(id: $orderId);
-        $order->reconstituteSequenceNumber(sequenceNumber: $sequenceNumber);
+    public static function reconstitute(
+        Identity $identity,
+        AggregateVersion $aggregateVersion,
+        array $state = []
+    ): static {
+        if (!$identity instanceof OrderId) {
+            $template = 'Expected identity of type <%s>, got <%s>.';
+
+            throw new InvalidArgumentException(message: sprintf($template, OrderId::class, $identity::class));
+        }
+
+        $order = new Order(id: $identity);
+        $order->aggregateVersion = $aggregateVersion;
+
         return $order;
     }
 

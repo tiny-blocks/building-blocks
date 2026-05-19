@@ -11,8 +11,6 @@ use TinyBlocks\BuildingBlocks\Event\DomainEvent;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
 use TinyBlocks\BuildingBlocks\Event\EventType;
-use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
-use TinyBlocks\BuildingBlocks\Snapshot\SnapshotData;
 use TinyBlocks\Time\Instant;
 
 trait AggregateRootBehavior
@@ -21,44 +19,21 @@ trait AggregateRootBehavior
 
     private EventRecords $recordedEvents;
 
-    private SequenceNumber $sequenceNumber;
-
-    public function sequenceNumber(): SequenceNumber
-    {
-        return $this->sequenceNumber ?? SequenceNumber::initial();
-    }
+    private AggregateVersion $aggregateVersion;
 
     public function modelVersion(): ModelVersion
     {
         return ModelVersion::initial();
     }
 
-    public function aggregateName(): string
+    public function aggregateType(): string
     {
         return new ReflectionClass(objectOrClass: static::class)->getShortName();
     }
 
-    protected function nextSequenceNumber(): void
+    public function aggregateVersion(): AggregateVersion
     {
-        $this->sequenceNumber = $this->sequenceNumber()->next();
-    }
-
-    protected function generateSnapshotData(): SnapshotData
-    {
-        return new SnapshotData(payload: $this->snapshotState());
-    }
-
-    protected function reconstituteSequenceNumber(SequenceNumber $sequenceNumber): void
-    {
-        $this->sequenceNumber = $sequenceNumber;
-    }
-
-    protected function snapshotState(): array
-    {
-        $state = get_object_vars($this);
-        unset($state['recordedEvents'], $state['sequenceNumber']);
-
-        return $state;
+        return $this->aggregateVersion ?? AggregateVersion::initial();
     }
 
     public function recordedEvents(): EventRecords
@@ -68,18 +43,22 @@ trait AggregateRootBehavior
         return EventRecords::createFrom(elements: $records);
     }
 
-    protected function buildEventRecord(DomainEvent $event): EventRecord
+    private function nextAggregateVersion(): void
+    {
+        $this->aggregateVersion = $this->aggregateVersion()->next();
+    }
+
+    private function buildEventRecord(DomainEvent $event): EventRecord
     {
         return new EventRecord(
             id: Uuid::uuid4(),
-            type: EventType::fromEvent(event: $event),
             event: $event,
-            identity: $this->identity(),
             revision: $event->revision(),
-            occurredOn: Instant::now(),
-            snapshotData: $this->generateSnapshotData(),
-            aggregateType: $this->aggregateName(),
-            sequenceNumber: $this->sequenceNumber()
+            eventType: EventType::fromEvent(event: $event),
+            occurredAt: Instant::now(),
+            aggregateId: $this->identity(),
+            aggregateType: $this->aggregateType(),
+            aggregateVersion: $this->aggregateVersion()
         );
     }
 }

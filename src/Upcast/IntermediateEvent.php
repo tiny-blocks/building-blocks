@@ -35,6 +35,12 @@ final readonly class IntermediateEvent implements ValueObject, ObjectMapper
             && $this->serializedEvent === $other->serializedEvent;
     }
 
+    /**
+     * Returns a copy of the IntermediateEvent with the revision replaced.
+     *
+     * @param Revision $revision The replacement revision.
+     * @return IntermediateEvent A new instance carrying the given revision.
+     */
     public function withRevision(Revision $revision): IntermediateEvent
     {
         return new IntermediateEvent(
@@ -44,6 +50,12 @@ final readonly class IntermediateEvent implements ValueObject, ObjectMapper
         );
     }
 
+    /**
+     * Returns a copy of the IntermediateEvent with the serialized payload replaced.
+     *
+     * @param array<string, mixed> $serializedEvent The replacement payload.
+     * @return IntermediateEvent A new instance carrying the given payload.
+     */
     public function withSerializedEvent(array $serializedEvent): IntermediateEvent
     {
         return new IntermediateEvent(

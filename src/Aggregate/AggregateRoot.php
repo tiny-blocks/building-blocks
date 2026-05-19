@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace TinyBlocks\BuildingBlocks\Aggregate;
 
 use TinyBlocks\BuildingBlocks\Entity\Entity;
-use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
 
 /**
  * Cluster of associated objects treated as a single unit for data changes, with one Entity as the root.
  *
- * <p>External references must target the root; invariants apply to the whole cluster; transactions never
+ * <p>External references must target the root. Invariants apply to the whole cluster. Transactions never
  * straddle aggregate boundaries. This interface adds two pragmatic fields absent from Evans:</p>
  *
  * <ul>
- *   <li><code>sequenceNumber</code> for optimistic offline locking.</li>
+ *   <li><code>aggregateVersion</code> for optimistic offline locking.</li>
  *   <li><code>modelVersion</code> for aggregate schema evolution.</li>
  * </ul>
  *
@@ -24,23 +23,12 @@ use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
  * @see Eric Evans, <em>Domain-Driven Design: Tackling Complexity in the Heart of Software</em>
  *      (Addison-Wesley, 2003), Chapter 6 "Aggregates".
  * @see Martin Fowler, <em>Patterns of Enterprise Application Architecture</em> (Addison-Wesley, 2002),
- *      "Optimistic Offline Lock", source of <code>sequenceNumber</code>.
+ *      "Optimistic Offline Lock", source of <code>aggregateVersion</code>.
  * @see Greg Young, <em>Versioning in an Event Sourced System</em> (Leanpub, 2017), source of
  *      <code>modelVersion</code>.
  */
 interface AggregateRoot extends Entity
 {
-    /**
-     * Returns the aggregate's current sequence number.
-     *
-     * <p>The initial value is <code>0</code>. The first recorded event increments it to <code>1</code>,
-     * and each subsequent event advances it by one. Persistence adapters compare the stored value against
-     * the in-memory one to detect concurrent modifications.</p>
-     *
-     * @return SequenceNumber The current sequence number.
-     */
-    public function sequenceNumber(): SequenceNumber;
-
     /**
      * Returns the schema version of this aggregate type.
      *
@@ -59,5 +47,16 @@ interface AggregateRoot extends Entity
      *
      * @return string The short class name.
      */
-    public function aggregateName(): string;
+    public function aggregateType(): string;
+
+    /**
+     * Returns the aggregate's current version.
+     *
+     * <p>The initial value is <code>0</code>. The first recorded event increments it to <code>1</code>,
+     * and each subsequent event advances it by one. Persistence adapters compare the stored value against
+     * the in-memory one to detect concurrent modifications.</p>
+     *
+     * @return AggregateVersion The current aggregate version.
+     */
+    public function aggregateVersion(): AggregateVersion;
 }

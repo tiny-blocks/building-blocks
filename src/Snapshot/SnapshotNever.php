@@ -12,6 +12,11 @@ final readonly class SnapshotNever implements SnapshotCondition
     {
     }
 
+    /**
+     * Creates a SnapshotNever condition that never triggers a snapshot.
+     *
+     * @return SnapshotNever The created condition.
+     */
     public static function create(): SnapshotNever
     {
         return new SnapshotNever();

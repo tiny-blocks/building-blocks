@@ -10,9 +10,8 @@ use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\DomainEvent;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
-use TinyBlocks\BuildingBlocks\Event\SequenceNumber;
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\EventHandlerMethodNotFound;
-use TinyBlocks\BuildingBlocks\Internal\Exceptions\NoEventHandlerRegistered;
+use TinyBlocks\BuildingBlocks\Exceptions\EventHandlerMethodNotFound;
+use TinyBlocks\BuildingBlocks\Exceptions\NoEventHandlerRegistered;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
 trait EventSourcingRootBehavior
@@ -21,10 +20,10 @@ trait EventSourcingRootBehavior
 
     public static function blank(Identity $identity): static
     {
-        $aggregate = new ReflectionClass(static::class)->newInstanceWithoutConstructor();
-        new ReflectionProperty($aggregate, $aggregate->identityName())
+        $aggregate = new ReflectionClass(objectOrClass: static::class)->newInstanceWithoutConstructor();
+        new ReflectionProperty(class: $aggregate, property: $aggregate->identityName())
             ->setValue($aggregate, $identity);
-        $aggregate->sequenceNumber = SequenceNumber::initial();
+        $aggregate->aggregateVersion = AggregateVersion::initial();
         $aggregate->recordedEvents = EventRecords::createFromEmpty();
 
         return $aggregate;
@@ -39,7 +38,7 @@ trait EventSourcingRootBehavior
 
         if (!is_null($snapshot)) {
             $aggregate->applySnapshot(snapshot: $snapshot);
-            $aggregate->sequenceNumber = $snapshot->sequenceNumber();
+            $aggregate->aggregateVersion = $snapshot->aggregateVersion();
         }
 
         foreach ($records as $record) {
@@ -49,29 +48,40 @@ trait EventSourcingRootBehavior
         return $aggregate;
     }
 
+    public function snapshotState(): array
+    {
+        /** @var array<string, mixed> $state */
+        $state = get_object_vars($this);
+        unset($state['recordedEvents'], $state['aggregateVersion']);
+
+        return $state;
+    }
+
     public function eventHandlers(): array
     {
         return [];
     }
 
-    public function snapshotState(): array
-    {
-        $state = get_object_vars($this);
-        unset($state['recordedEvents'], $state['sequenceNumber']);
-
-        return $state;
-    }
-
+    /**
+     * Records a domain event and applies it to the aggregate's state in one step.
+     *
+     * <p>Invoked by command methods of an event-sourced aggregate. Advances the aggregate version,
+     * builds the {@see EventRecord}, applies it via the registered handler or the implicit
+     * <code>whenEventShortName</code> convention, and appends the record to the recorded-events
+     * collection. Not part of the public surface.</p>
+     *
+     * @param DomainEvent $event The event to record and apply.
+     */
     protected function when(DomainEvent $event): void
     {
-        $this->nextSequenceNumber();
+        $this->nextAggregateVersion();
         $record = $this->buildEventRecord(event: $event);
         $this->applyEvent(record: $record);
         $this->recordedEvents = ($this->recordedEvents ?? EventRecords::createFromEmpty())
             ->add(elements: $record);
     }
 
-    protected function applyEvent(EventRecord $record): void
+    private function applyEvent(EventRecord $record): void
     {
         $handlers = $this->eventHandlers();
         $eventClass = $record->event::class;
@@ -82,17 +92,17 @@ trait EventSourcingRootBehavior
             }
 
             $handlers[$eventClass]($record->event);
-            $this->sequenceNumber = $record->sequenceNumber;
+            $this->aggregateVersion = $record->aggregateVersion;
             return;
         }
 
-        $methodName = sprintf('when%s', $record->type->value);
+        $methodName = sprintf('when%s', $record->eventType->value);
 
         if (!method_exists($this, $methodName)) {
             throw new EventHandlerMethodNotFound(methodName: $methodName, aggregateClass: static::class);
         }
 
         $this->{$methodName}($record->event);
-        $this->sequenceNumber = $record->sequenceNumber;
+        $this->aggregateVersion = $record->aggregateVersion;
     }
 }

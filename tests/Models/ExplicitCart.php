@@ -14,7 +14,6 @@ final class ExplicitCart implements EventSourcingRoot
 
     private CartId $cartId;
 
-    /** @var list<string> */
     private array $productIds = [];
 
     public function addProduct(string $productId): void
@@ -35,7 +34,7 @@ final class ExplicitCart implements EventSourcingRoot
     public function eventHandlers(): array
     {
         return [
-            ProductAdded::class => function (ProductAdded $event): void {
+            ProductAdded::class   => function (ProductAdded $event): void {
                 $this->productIds[] = $event->productId;
             },
             ProductAddedV2::class => function (ProductAddedV2 $event): void {
@@ -44,9 +43,6 @@ final class ExplicitCart implements EventSourcingRoot
         ];
     }
 
-    /**
-     * @return list<string>
-     */
     public function productIds(): array
     {
         return $this->productIds;
