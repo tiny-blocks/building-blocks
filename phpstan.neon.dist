@@ -1,16 +1,44 @@
 parameters:
-  paths:
-    - src
-  level: 9
-  tmpDir: report/phpstan
-  ignoreErrors:
-    - '#mixed given#'
-    - '#iterable type#'
-    - '#of new static#'
-    - '#generic interface#'
-    - '#destructuring on mixed#'
-    - identifier: trait.unused
-    - '#expects int<1, max>#'
-    - message: '#Upcasters::chain\(\) should return#'
-      path: src/Upcast/Upcasters.php
-  reportUnmatchedIgnoredErrors: false
+    level: max
+    paths:
+        - src
+        - tests
+    reportUnmatchedIgnoredErrors: true
+    ignoreErrors:
+        # Constructor parameter $aggregateState cannot carry PHPDoc per code-style rule;
+        # the getter return-type mismatch is the downstream symptom of that constraint.
+        -
+            identifier: missingType.iterableValue
+            path: src/Snapshot/Snapshot.php
+        -
+            identifier: return.type
+            path: src/Snapshot/Snapshot.php
+
+        # Constructor parameter $serializedEvent cannot carry PHPDoc per code-style rule.
+        -
+            identifier: missingType.iterableValue
+            path: src/Upcast/IntermediateEvent.php
+
+        # Trait argument-type error reported in context of test fixture upcasters,
+        # whose rewrite() return is untyped because PHPDoc is prohibited in tests/.
+        -
+            identifier: argument.type
+            path: src/Upcast/SingleUpcasterBehavior.php
+
+        # tests/ — PHPDoc and @var are prohibited inside tests/, so PHPStan errors
+        # for typed arrays in fixtures and helpers route through ignoreErrors.
+        -
+            identifier: missingType.iterableValue
+            path: tests/*
+        -
+            identifier: return.type
+            path: tests/*
+        -
+            identifier: assign.propertyType
+            path: tests/Models/*
+        -
+            identifier: property.nonObject
+            path: tests/Unit/*
+        -
+            identifier: method.nonObject
+            path: tests/Unit/*
