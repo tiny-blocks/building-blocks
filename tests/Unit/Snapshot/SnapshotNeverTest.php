@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Test\TinyBlocks\BuildingBlocks\Unit\Snapshot;
+
+use PHPUnit\Framework\TestCase;
+use Test\TinyBlocks\BuildingBlocks\Models\Cart;
+use Test\TinyBlocks\BuildingBlocks\Models\CartId;
+use TinyBlocks\BuildingBlocks\Snapshot\SnapshotNever;
+
+final class SnapshotNeverTest extends TestCase
+{
+    public function testReturnsFalseForBlankAggregate(): void
+    {
+        /** @Given a blank cart */
+        $cart = Cart::blank(identity: new CartId(value: 'cart-never-1'));
+
+        /** @When asking the SnapshotNever condition whether to snapshot */
+        $shouldSnapshot = SnapshotNever::create()->shouldSnapshot(aggregate: $cart);
+
+        /** @Then the result is always false */
+        self::assertFalse($shouldSnapshot);
+    }
+
+    public function testReturnsFalseForAggregateAtHighAggregateVersion(): void
+    {
+        /** @Given a cart at aggregate version 1000 */
+        $cart = Cart::withProducts(cartId: new CartId(value: 'cart-never-2'), count: 1000);
+
+        /** @When asking the SnapshotNever condition whether to snapshot */
+        $shouldSnapshot = SnapshotNever::create()->shouldSnapshot(aggregate: $cart);
+
+        /** @Then the result is always false */
+        self::assertFalse($shouldSnapshot);
+    }
+
+    public function testTwoInstancesAreEqualUnderLooseComparison(): void
+    {
+        /** @Given two separate SnapshotNever instances */
+        $first = SnapshotNever::create();
+
+        /** @And a second instance */
+        $second = SnapshotNever::create();
+
+        /** @Then both instances are equal under loose comparison */
+        self::assertEquals($first, $second);
+    }
+}

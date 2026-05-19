@@ -1,0 +1,153 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Test\TinyBlocks\BuildingBlocks\Unit\Entity;
+
+use PHPUnit\Framework\TestCase;
+use Test\TinyBlocks\BuildingBlocks\Models\AppointmentId;
+use Test\TinyBlocks\BuildingBlocks\Models\Cart;
+use Test\TinyBlocks\BuildingBlocks\Models\CartId;
+use Test\TinyBlocks\BuildingBlocks\Models\Order;
+use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
+use Test\TinyBlocks\BuildingBlocks\Models\OrderWithMissingIdentityProperty;
+use TinyBlocks\BuildingBlocks\Exceptions\MissingIdentityProperty;
+
+final class EntityBehaviorTest extends TestCase
+{
+    public function testIdentityReturnsHeldIdentity(): void
+    {
+        /** @Given an order constructed with a known identity */
+        $orderId = new OrderId(value: 'ord-1');
+
+        /** @And the aggregate placed for that identity */
+        $order = Order::place(orderId: $orderId, item: 'book');
+
+        /** @When retrieving the identity */
+        $identity = $order->identity();
+
+        /** @Then the same identity instance is returned */
+        self::assertSame($orderId, $identity);
+    }
+
+    public function testIdentityNameReturnsPropertyName(): void
+    {
+        /** @Given an order aggregate */
+        $order = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'pen');
+
+        /** @When retrieving the identity property name */
+        $name = $order->identityName();
+
+        /** @Then it matches the value returned by identityProperty() */
+        self::assertSame('id', $name);
+    }
+
+    public function testIdentityNameReturnsOverriddenPropertyName(): void
+    {
+        /** @Given a blank Cart with an explicit identityProperty override */
+        $cart = Cart::blank(identity: new CartId(value: 'cart-identity'));
+
+        /** @When retrieving the identity property name */
+        $name = $cart->identityName();
+
+        /** @Then it matches the overridden value */
+        self::assertSame('cartId', $name);
+    }
+
+    public function testIdentityValueReturnsScalarForSingleIdentity(): void
+    {
+        /** @Given an order whose identity is a single-value identifier */
+        $order = Order::place(orderId: new OrderId(value: 'ord-42'), item: 'pen');
+
+        /** @When retrieving the identity value */
+        $identityValue = $order->identityValue();
+
+        /** @Then the raw scalar is returned */
+        self::assertSame('ord-42', $identityValue);
+    }
+
+    public function testIdentityValueReturnsAssociativeArrayForCompoundIdentity(): void
+    {
+        /** @Given a compound identity */
+        $appointmentId = new AppointmentId(tenantId: 'tenant-1', appointmentId: 'apt-1');
+
+        /** @When retrieving the identity value */
+        $identityValue = $appointmentId->identityValue();
+
+        /** @Then an associative array with all fields is returned */
+        self::assertSame(['tenantId' => 'tenant-1', 'appointmentId' => 'apt-1'], $identityValue);
+    }
+
+    public function testSameIdentityOfReturnsTrueForAggregatesWithEqualIdentity(): void
+    {
+        /** @Given two orders sharing the same identity value */
+        $first = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'book');
+
+        /** @And a second order with the same identity value */
+        $second = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'pen');
+
+        /** @When comparing their identities */
+        $haveSameIdentity = $first->sameIdentityOf(other: $second);
+
+        /** @Then the comparison yields true */
+        self::assertTrue($haveSameIdentity);
+    }
+
+    public function testSameIdentityOfReturnsFalseForAggregatesWithDifferentIdentity(): void
+    {
+        /** @Given two orders with different identities */
+        $first = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'book');
+
+        /** @And a second order with a different identity */
+        $second = Order::place(orderId: new OrderId(value: 'ord-2'), item: 'pen');
+
+        /** @When comparing their identities */
+        $haveSameIdentity = $first->sameIdentityOf(other: $second);
+
+        /** @Then the comparison yields false */
+        self::assertFalse($haveSameIdentity);
+    }
+
+    public function testIdentityEqualsReturnsTrueForEqualIdentity(): void
+    {
+        /** @Given an order and an identity with the same value */
+        $order = Order::place(orderId: new OrderId(value: 'ord-5'), item: 'lamp');
+
+        /** @And a separately constructed identity of equal value */
+        $sameIdentity = new OrderId(value: 'ord-5');
+
+        /** @When comparing the identity */
+        $hasEqualIdentity = $order->identityEquals(other: $sameIdentity);
+
+        /** @Then the comparison yields true */
+        self::assertTrue($hasEqualIdentity);
+    }
+
+    public function testIdentityEqualsReturnsFalseForDifferentIdentity(): void
+    {
+        /** @Given an order and an identity with a different value */
+        $order = Order::place(orderId: new OrderId(value: 'ord-5'), item: 'lamp');
+
+        /** @And a different identity value */
+        $otherIdentity = new OrderId(value: 'ord-9');
+
+        /** @When comparing the identity */
+        $hasEqualIdentity = $order->identityEquals(other: $otherIdentity);
+
+        /** @Then the comparison yields false */
+        self::assertFalse($hasEqualIdentity);
+    }
+
+    public function testShipThrowsWhenIdentityPropertyIsMissing(): void
+    {
+        /** @Given an aggregate whose identityProperty() points to a non-existent property */
+        $order = new OrderWithMissingIdentityProperty();
+
+        /** @Then a MissingIdentityProperty exception carrying the property name is thrown */
+        $this->expectException(MissingIdentityProperty::class);
+        $this->expectExceptionMessage('nonExistentProperty');
+
+        /** @When shipping the order and indirectly reaching identity resolution */
+        $order->ship();
+    }
+}

@@ -16,12 +16,11 @@ final class CartWithLogger implements EventSourcingRoot
 
     private string $logBuffer = '';
 
-    /** @var list<string> */
     private array $productIds = [];
 
     public function addProduct(string $productId): void
     {
-        $this->logBuffer .= "Added: {$productId}";
+        $this->logBuffer .= "Added: $productId";
         $this->when(event: new ProductAdded(productId: $productId));
     }
 
@@ -33,17 +32,9 @@ final class CartWithLogger implements EventSourcingRoot
     public function snapshotState(): array
     {
         $state = get_object_vars($this);
-        unset($state['recordedEvents'], $state['sequenceNumber'], $state['logBuffer']);
+        unset($state['recordedEvents'], $state['aggregateVersion'], $state['logBuffer']);
 
         return $state;
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function productIds(): array
-    {
-        return $this->productIds;
     }
 
     protected function identityProperty(): string
