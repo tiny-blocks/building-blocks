@@ -23,18 +23,6 @@ final readonly class EventType implements ValueObject
     }
 
     /**
-     * Creates an EventType from a domain event using its short class name.
-     *
-     * @param DomainEvent $event The event whose class name carries the type.
-     * @return EventType The created instance.
-     * @throws InvalidEventType If the resolved class name does not match the required pattern.
-     */
-    public static function fromEvent(DomainEvent $event): EventType
-    {
-        return new EventType(value: new ReflectionClass(objectOrClass: $event)->getShortName());
-    }
-
-    /**
      * Creates an EventType from a raw type identifier.
      *
      * @param string $value The PascalCase type identifier.
@@ -44,5 +32,29 @@ final readonly class EventType implements ValueObject
     public static function fromString(string $value): EventType
     {
         return new EventType(value: $value);
+    }
+
+    /**
+     * Creates an EventType from a domain event using its short class name.
+     *
+     * @param DomainEvent $event The domain event whose class name carries the type.
+     * @return EventType The created instance.
+     * @throws InvalidEventType If the resolved class name does not match the required pattern.
+     */
+    public static function fromDomainEvent(DomainEvent $event): EventType
+    {
+        return new EventType(value: new ReflectionClass(objectOrClass: $event)->getShortName());
+    }
+
+    /**
+     * Creates an EventType from an integration event using its short class name.
+     *
+     * @param IntegrationEvent $event The integration event whose class name carries the type.
+     * @return EventType The created instance.
+     * @throws InvalidEventType If the resolved class name does not match the required pattern.
+     */
+    public static function fromIntegrationEvent(IntegrationEvent $event): EventType
+    {
+        return new EventType(value: new ReflectionClass(objectOrClass: $event)->getShortName());
     }
 }

@@ -54,7 +54,7 @@ trait AggregateRootBehavior
             id: Uuid::uuid4(),
             event: $event,
             revision: $event->revision(),
-            eventType: EventType::fromEvent(event: $event),
+            eventType: EventType::fromDomainEvent(event: $event),
             occurredAt: Instant::now(),
             aggregateId: $this->identity(),
             aggregateType: $this->aggregateType(),

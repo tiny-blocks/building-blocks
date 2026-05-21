@@ -9,7 +9,10 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderPlaced;
+use Test\TinyBlocks\BuildingBlocks\Models\PaymentConfirmed;
 use TinyBlocks\BuildingBlocks\Event\EventType;
+use TinyBlocks\BuildingBlocks\Event\IntegrationEvent;
+use TinyBlocks\BuildingBlocks\Event\IntegrationEventBehavior;
 use TinyBlocks\BuildingBlocks\Exceptions\InvalidEventType;
 
 final class EventTypeTest extends TestCase
@@ -24,16 +27,42 @@ final class EventTypeTest extends TestCase
         self::assertTrue($constructor->isPrivate());
     }
 
-    public function testFromEventUsesTheShortClassNameOfTheDomainEvent(): void
+    public function testFromDomainEventUsesTheShortClassNameOfTheDomainEvent(): void
     {
         /** @Given a domain event instance */
         $placedEvent = new OrderPlaced(item: 'book');
 
-        /** @When creating an EventType from the event */
-        $eventType = EventType::fromEvent(event: $placedEvent);
+        /** @When creating an EventType from the domain event */
+        $eventType = EventType::fromDomainEvent(event: $placedEvent);
 
         /** @Then the value matches the short class name */
         self::assertSame('OrderPlaced', $eventType->value);
+    }
+
+    public function testFromIntegrationEventUsesTheShortClassNameOfTheIntegrationEvent(): void
+    {
+        /** @Given an integration event instance */
+        $paymentConfirmed = new PaymentConfirmed(orderId: 'ord-1');
+
+        /** @When creating an EventType from the integration event */
+        $eventType = EventType::fromIntegrationEvent(event: $paymentConfirmed);
+
+        /** @Then the value matches the short class name */
+        self::assertSame('PaymentConfirmed', $eventType->value);
+    }
+
+    public function testFromIntegrationEventThrowsWhenClassNameDoesNotMatchPattern(): void
+    {
+        /** @Given an integration event whose short class name does not match the required pattern */
+        $event = new class implements IntegrationEvent {
+            use IntegrationEventBehavior;
+        };
+
+        /** @Then an InvalidEventType exception is thrown */
+        $this->expectException(InvalidEventType::class);
+
+        /** @When creating an EventType from the anonymous integration event */
+        EventType::fromIntegrationEvent(event: $event);
     }
 
     public function testFromStringAcceptsValidPascalCase(): void

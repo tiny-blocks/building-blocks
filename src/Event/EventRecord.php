@@ -51,7 +51,7 @@ final readonly class EventRecord implements ValueObject
             id: $id ?? Uuid::uuid4(),
             event: $event,
             revision: $event->revision(),
-            eventType: EventType::fromEvent(event: $event),
+            eventType: EventType::fromDomainEvent(event: $event),
             occurredAt: $occurredAt ?? Instant::now(),
             aggregateId: $aggregateId,
             aggregateType: $aggregateType,
