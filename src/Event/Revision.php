@@ -20,16 +20,6 @@ final readonly class Revision implements ValueObject
     }
 
     /**
-     * Creates a Revision with the initial value of 1.
-     *
-     * @return Revision The initial revision.
-     */
-    public static function initial(): Revision
-    {
-        return new Revision(value: 1);
-    }
-
-    /**
      * Creates a Revision from the given integer value.
      *
      * @param int $value The revision number. Must be greater than or equal to 1.
@@ -39,6 +29,16 @@ final readonly class Revision implements ValueObject
     public static function of(int $value): Revision
     {
         return new Revision(value: $value);
+    }
+
+    /**
+     * Creates a Revision with the initial value of 1.
+     *
+     * @return Revision The initial revision.
+     */
+    public static function initial(): Revision
+    {
+        return new Revision(value: 1);
     }
 
     /**
