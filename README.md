@@ -16,6 +16,11 @@
         - [Draining events](#draining-events)
         - [Restoring aggregate version on reload](#restoring-aggregate-version-on-reload)
         - [Constructing event records directly](#constructing-event-records-directly)
+    + [Integration events and the Anti-Corruption Layer](#integration-events-and-the-anti-corruption-layer)
+        - [Declaring integration events](#declaring-integration-events)
+        - [Writing a translator](#writing-a-translator)
+        - [Registering translators](#registering-translators)
+        - [Constructing integration event records directly](#constructing-integration-event-records-directly)
     + [Event sourcing](#event-sourcing)
         - [Applying events to state](#applying-events-to-state)
         - [Creating a blank aggregate](#creating-a-blank-aggregate)
@@ -477,6 +482,157 @@ read these fields off `EventRecord` directly without instantiating one.
   );
   ```
 
+### Integration events and the Anti-Corruption Layer
+
+`DomainEvent` describes facts that happened inside the bounded context and evolves freely with the
+internal model. `IntegrationEvent` describes the stable public contract that flows to external
+consumers and must remain backward-compatible. The two interfaces are siblings, not parent and
+child. An `IntegrationEvent` is produced by an `IntegrationEventTranslator`, which acts as the
+Anti-Corruption Layer (Vernon, IDDD Chapter 3) between the internal model and the public contract.
+
+#### Declaring integration events
+
+* `IntegrationEvent`: marker interface for events that cross bounded-context boundaries. Carries
+  a `revision()` method that versions the public schema independently from the underlying domain
+  event's schema.
+* `IntegrationEventBehavior`: default implementation that returns `Revision::initial()`. Use it
+  on every integration event unless the public schema has been bumped.
+
+Class names for integration events must follow the bounded-context ubiquitous language and must
+**not** carry a technical suffix such as `IntegrationEvent`. The domain event `TransactionConfirmed`
+is translated into the integration event `PaymentConfirmed`, not `PaymentConfirmedIntegrationEvent`.
+
+  ```php
+  <?php
+
+  declare(strict_types=1);
+
+  use TinyBlocks\BuildingBlocks\Event\IntegrationEvent;
+  use TinyBlocks\BuildingBlocks\Event\IntegrationEventBehavior;
+
+  final readonly class PaymentConfirmed implements IntegrationEvent
+  {
+      use IntegrationEventBehavior;
+
+      public function __construct(public string $orderId, public float $amount)
+      {
+      }
+  }
+  ```
+
+  Bumping the public schema revision independently from the underlying domain event:
+
+  ```php
+  <?php
+
+  declare(strict_types=1);
+
+  use TinyBlocks\BuildingBlocks\Event\IntegrationEvent;
+  use TinyBlocks\BuildingBlocks\Event\IntegrationEventBehavior;
+  use TinyBlocks\BuildingBlocks\Event\Revision;
+
+  final readonly class PaymentConfirmedV2 implements IntegrationEvent
+  {
+      use IntegrationEventBehavior;
+
+      public function __construct(
+          public string $orderId,
+          public float $amount,
+          public string $currency
+      ) {
+      }
+
+      public function revision(): Revision
+      {
+          return Revision::of(value: 2);
+      }
+  }
+  ```
+
+#### Writing a translator
+
+`IntegrationEventTranslator` is the Anti-Corruption Layer seam. Each implementation declares
+which `EventRecord` it handles via `supports()` and produces the corresponding
+`IntegrationEvent` via `translate()`. Implementations must be pure functions with no side
+effects or I/O.
+
+  ```php
+  <?php
+
+  declare(strict_types=1);
+
+  use TinyBlocks\BuildingBlocks\Event\EventRecord;
+  use TinyBlocks\BuildingBlocks\Event\IntegrationEvent;
+  use TinyBlocks\BuildingBlocks\Event\IntegrationEventTranslator;
+
+  final readonly class TransactionConfirmedTranslator implements IntegrationEventTranslator
+  {
+      public function supports(EventRecord $record): bool
+      {
+          return $record->event instanceof TransactionConfirmed;
+      }
+
+      public function translate(EventRecord $record): IntegrationEvent
+      {
+          /** @var TransactionConfirmed $event */
+          $event = $record->event;
+
+          return new PaymentConfirmed(orderId: $event->orderId, amount: $event->amount);
+      }
+  }
+  ```
+
+#### Registering translators
+
+`IntegrationEventTranslators` is an ordered collection of translators. `findFor()` returns the
+first translator whose `supports()` returns `true` for a given record, or `null` when no
+translator handles it. A `null` result is the canonical signal that the event is purely internal
+and must not cross the bounded-context boundary.
+
+  ```php
+  <?php
+
+  declare(strict_types=1);
+
+  use TinyBlocks\BuildingBlocks\Event\IntegrationEventTranslators;
+
+  $translators = IntegrationEventTranslators::createFrom(elements: [
+      new TransactionConfirmedTranslator(),
+      new OrderShippedTranslator()
+  ]);
+
+  $translator = $translators->findFor(record: $record);
+
+  if (!is_null($translator)) {
+      $integrationEvent = $translator->translate(record: $record);
+  }
+  ```
+
+#### Constructing integration event records directly
+
+`IntegrationEventRecord::from()` envelopes a translated integration event with the transport
+metadata from the originating `EventRecord`. The identifier is reused from the originating
+record so that outbox relay retries remain idempotent. The revision and event type are derived
+from the integration event, not from the domain event.
+
+  | Parameter          | Type               | Description                                                                      |
+  |--------------------|--------------------|----------------------------------------------------------------------------------|
+  | `eventRecord`      | `EventRecord`      | Originating domain event record. Supplies transport metadata.                    |
+  | `integrationEvent` | `IntegrationEvent` | Integration event produced by the translator. Supplies payload and public schema. |
+
+  ```php
+  <?php
+
+  declare(strict_types=1);
+
+  use TinyBlocks\BuildingBlocks\Event\IntegrationEventRecord;
+
+  $integrationEventRecord = IntegrationEventRecord::from(
+      eventRecord: $eventRecord,
+      integrationEvent: $integrationEvent
+  );
+  ```
+
 ### Event sourcing
 
 `EventSourcingRoot` stores no state of its own, state is derived by replaying the event stream.
@@ -909,6 +1065,41 @@ adding any expressiveness over assigning the property directly. The factory now 
 directly inside the trait, which is legal because the assignment happens in the static method of the same class
 after the trait flattens into the aggregate. Eliminating the public method tightens the surface and removes the
 documentation burden of explaining when calling it is correct.
+
+### 13. Why are `DomainEvent` and `IntegrationEvent` siblings instead of parent and child?
+
+Domain events evolve freely with the internal model. Integration events are a public contract
+that must remain backward-compatible across bounded-context consumers. A parent/child relationship
+would make every domain event eligible to cross the bounded-context boundary by virtue of typing,
+reintroducing the very coupling the distinction exists to eliminate. Sibling interfaces force the
+boundary crossing to be an explicit translation step, observable in the type system. There is no
+accidental publication: the compiler rejects a `DomainEvent` where an `IntegrationEvent` is
+expected, and the `IntegrationEventTranslator` is the only path between the two.
+
+> Vaughn Vernon, *Implementing Domain-Driven Design* (Addison-Wesley, 2013), Chapter 3,
+> "Context Maps".
+
+### 14. Why doesn't the library let me publish a `DomainEvent` directly through the outbox?
+
+The Anti-Corruption Layer exists precisely to keep the public contract isolated from the internal
+model. A shortcut that lets a domain event become an integration event without an explicit
+translation step erases that boundary.
+
+Without translation, internal model refactors propagate silently to external consumers. A renamed
+field or a new value object on a domain event changes the published payload with no compile-time
+signal. Consumers break at runtime, not at the CI boundary where the change was introduced.
+
+Domain events are versioned by the internal model; integration events are versioned by the public
+contract. Coupling them forces a single revision counter to serve two evolution speeds, which
+collapses the ability to evolve each side independently.
+
+Even when a domain event and an integration event happen to share the same shape today, the cost
+of writing a translator that copies fields is a few seconds per event. In return: static analysis
+flags drift between the two shapes, refactor pressure surfaces in CI as a compile error inside the
+translator, and the public contract is locatable as a single namespace in the codebase.
+
+> Vaughn Vernon, *Implementing Domain-Driven Design* (Addison-Wesley, 2013), Chapter 3,
+> "Context Maps", section "Anticorruption Layer".
 
 ## License
 
