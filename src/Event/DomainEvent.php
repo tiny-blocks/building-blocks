@@ -38,4 +38,14 @@ interface DomainEvent
      * @return Revision The current schema revision. Defaults to {@see Revision::initial}.
      */
     public function revision(): Revision;
+
+    /**
+     * Returns the stable type identifier of this event.
+     *
+     * <p>The value is decoupled from the class name so it stays constant across renames and refactors,
+     * keeping already-persisted event types valid. It must match the pattern enforced by {@see EventType}.</p>
+     *
+     * @return string The stable PascalCase type identifier.
+     */
+    public function eventType(): string;
 }

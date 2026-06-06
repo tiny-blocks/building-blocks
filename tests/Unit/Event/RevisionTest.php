@@ -50,6 +50,18 @@ final class RevisionTest extends TestCase
         self::assertSame(1, $revision->value);
     }
 
+    public function testValueReturnsTheBackingInteger(): void
+    {
+        /** @Given a revision of 42 */
+        $revision = Revision::of(value: 42);
+
+        /** @When retrieving its ordinal value */
+        $value = $revision->value();
+
+        /** @Then the backing integer is returned */
+        self::assertSame(42, $value);
+    }
+
     public function testEqualsReturnsTrueForSameRevision(): void
     {
         /** @Given two revisions with the same value */

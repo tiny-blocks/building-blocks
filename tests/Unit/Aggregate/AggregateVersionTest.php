@@ -74,6 +74,18 @@ final class AggregateVersionTest extends TestCase
         self::assertSame(5, $aggregateVersion->value);
     }
 
+    public function testValueReturnsTheBackingInteger(): void
+    {
+        /** @Given an aggregate version of 5 */
+        $aggregateVersion = AggregateVersion::of(value: 5);
+
+        /** @When retrieving its ordinal value */
+        $value = $aggregateVersion->value();
+
+        /** @Then the backing integer is returned */
+        self::assertSame(5, $value);
+    }
+
     public function testIsAfterReturnsTrueWhenStrictlyGreater(): void
     {
         /** @Given a larger aggregate version */

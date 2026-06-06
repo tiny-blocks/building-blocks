@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace TinyBlocks\BuildingBlocks\Event;
 
 use TinyBlocks\BuildingBlocks\Exceptions\InvalidRevision;
+use TinyBlocks\BuildingBlocks\Ordinal;
+use TinyBlocks\BuildingBlocks\OrdinalBehavior;
 use TinyBlocks\Vo\ValueObject;
 use TinyBlocks\Vo\ValueObjectBehavior;
 
-final readonly class Revision implements ValueObject
+final readonly class Revision implements ValueObject, Ordinal
 {
     use ValueObjectBehavior;
+    use OrdinalBehavior;
 
     private function __construct(public int $value)
     {
@@ -41,25 +44,8 @@ final readonly class Revision implements ValueObject
         return new Revision(value: 1);
     }
 
-    /**
-     * Tells whether this revision is strictly after the given one.
-     *
-     * @param Revision $other The revision to compare against.
-     * @return bool True when this revision's value is greater than the other's.
-     */
-    public function isAfter(Revision $other): bool
+    public function value(): int
     {
-        return $this->value > $other->value;
-    }
-
-    /**
-     * Tells whether this revision is strictly before the given one.
-     *
-     * @param Revision $other The revision to compare against.
-     * @return bool True when this revision's value is less than the other's.
-     */
-    public function isBefore(Revision $other): bool
-    {
-        return $this->value < $other->value;
+        return $this->value;
     }
 }

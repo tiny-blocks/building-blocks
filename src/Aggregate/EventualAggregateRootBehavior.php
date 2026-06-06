@@ -4,34 +4,44 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Aggregate;
 
-use ReflectionClass;
-use ReflectionProperty;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\DomainEvent;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
-use TinyBlocks\BuildingBlocks\Event\EventRecords;
+use TinyBlocks\BuildingBlocks\Exceptions\IncompleteAggregateState;
+use TinyBlocks\BuildingBlocks\Internal\AggregateReflection;
 
 trait EventualAggregateRootBehavior
 {
     use AggregateRootBehavior;
 
-    public static function reconstitute(
+    public static function reconstitutePartial(
         Identity $identity,
-        AggregateVersion $aggregateVersion,
-        array $state = []
+        array $aggregateState,
+        AggregateVersion $aggregateVersion
     ): static {
-        $aggregate = new ReflectionClass(objectOrClass: static::class)->newInstanceWithoutConstructor();
-        new ReflectionProperty(class: $aggregate, property: $aggregate->identityName())
-            ->setValue($aggregate, $identity);
-
-        foreach ($state as $property => $value) {
-            if (property_exists($aggregate, $property)) {
-                new ReflectionProperty(class: $aggregate, property: $property)
-                    ->setValue($aggregate, $value);
-            }
-        }
-
+        $aggregate = static::createBlank(identity: $identity);
+        AggregateReflection::hydrate(target: $aggregate, state: $aggregateState);
         $aggregate->aggregateVersion = $aggregateVersion;
+
+        return $aggregate;
+    }
+
+    public static function reconstituteStrict(
+        Identity $identity,
+        array $aggregateState,
+        AggregateVersion $aggregateVersion
+    ): static {
+        $aggregate = static::reconstitutePartial(
+            identity: $identity,
+            aggregateState: $aggregateState,
+            aggregateVersion: $aggregateVersion
+        );
+
+        $missingProperties = AggregateReflection::uninitializedRequiredProperties(target: $aggregate);
+
+        if ($missingProperties !== []) {
+            throw new IncompleteAggregateState(className: static::class, propertyNames: $missingProperties);
+        }
 
         return $aggregate;
     }
@@ -46,10 +56,9 @@ trait EventualAggregateRootBehavior
      *
      * @param DomainEvent $event The event to record.
      */
-    protected function push(DomainEvent $event): void
+    protected function pushEvent(DomainEvent $event): void
     {
         $this->nextAggregateVersion();
-        $this->recordedEvents = ($this->recordedEvents ?? EventRecords::createFromEmpty())
-            ->add(elements: $this->buildEventRecord(event: $event));
+        $this->appendRecordedEvent(record: $this->buildEventRecord(event: $event));
     }
 }

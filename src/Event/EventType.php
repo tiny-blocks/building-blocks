@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Event;
 
-use ReflectionClass;
 use TinyBlocks\BuildingBlocks\Exceptions\InvalidEventType;
+use TinyBlocks\BuildingBlocks\Internal\ClassName;
 use TinyBlocks\Vo\ValueObject;
 use TinyBlocks\Vo\ValueObjectBehavior;
 
@@ -35,15 +35,15 @@ final readonly class EventType implements ValueObject
     }
 
     /**
-     * Creates an EventType from a domain event using its short class name.
+     * Creates an EventType from a domain event using its declared type identifier.
      *
-     * @param DomainEvent $event The domain event whose class name carries the type.
+     * @param DomainEvent $event The domain event whose <code>eventType()</code> carries the type.
      * @return EventType The created instance.
-     * @throws InvalidEventType If the resolved class name does not match the required pattern.
+     * @throws InvalidEventType If the declared type does not match the required pattern.
      */
     public static function fromDomainEvent(DomainEvent $event): EventType
     {
-        return new EventType(value: new ReflectionClass(objectOrClass: $event)->getShortName());
+        return new EventType(value: $event->eventType());
     }
 
     /**
@@ -55,6 +55,6 @@ final readonly class EventType implements ValueObject
      */
     public static function fromIntegrationEvent(IntegrationEvent $event): EventType
     {
-        return new EventType(value: new ReflectionClass(objectOrClass: $event)->getShortName());
+        return new EventType(value: ClassName::shortName(target: $event));
     }
 }

@@ -29,6 +29,18 @@ final class ModelVersionTest extends TestCase
         self::assertSame(2, $version->value);
     }
 
+    public function testValueReturnsTheBackingInteger(): void
+    {
+        /** @Given a model version of 2 */
+        $version = ModelVersion::of(value: 2);
+
+        /** @When retrieving its ordinal value */
+        $value = $version->value();
+
+        /** @Then the backing integer is returned */
+        self::assertSame(2, $value);
+    }
+
     public function testEqualsReturnsTrueForSameValue(): void
     {
         /** @Given two model versions with the same value */

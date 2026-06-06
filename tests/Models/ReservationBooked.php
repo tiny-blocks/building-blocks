@@ -10,4 +10,9 @@ use TinyBlocks\BuildingBlocks\Event\DomainEventBehavior;
 final readonly class ReservationBooked implements DomainEvent
 {
     use DomainEventBehavior;
+
+    public function eventType(): string
+    {
+        return 'ReservationBooked';
+    }
 }

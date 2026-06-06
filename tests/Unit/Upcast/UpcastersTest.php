@@ -17,7 +17,7 @@ final class UpcastersTest extends TestCase
     public function testEmptyChainReturnsEventUnchanged(): void
     {
         /** @Given an event at revision 1 */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -33,7 +33,7 @@ final class UpcastersTest extends TestCase
     public function testSingleMatchingUpcasterTransformsEvent(): void
     {
         /** @Given an event at revision 1 eligible for V1 migration */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -53,7 +53,7 @@ final class UpcastersTest extends TestCase
     public function testSingleNonMatchingUpcasterReturnsEventUnchanged(): void
     {
         /** @Given an event at revision 2 — past the V1 migration window */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::of(value: 2),
             serializedEvent: ['productId' => 'prod-1', 'quantity' => 1]
@@ -72,7 +72,7 @@ final class UpcastersTest extends TestCase
     public function testChainedUpcastersApplySequentially(): void
     {
         /** @Given an event at revision 1 eligible for both V1 and V2 migrations */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -92,7 +92,7 @@ final class UpcastersTest extends TestCase
     public function testOnlyMatchingUpcastersInChainApply(): void
     {
         /** @Given an event at revision 2 — only eligible for V2 migration */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::of(value: 2),
             serializedEvent: ['productId' => 'prod-1', 'quantity' => 1]

@@ -10,7 +10,7 @@ use Test\TinyBlocks\BuildingBlocks\Models\CartId;
 use Test\TinyBlocks\BuildingBlocks\Models\CartWithLogger;
 use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
-use TinyBlocks\Time\Instant;
+use TinyBlocks\BuildingBlocks\Utc;
 
 final class SnapshotTest extends TestCase
 {
@@ -62,7 +62,7 @@ final class SnapshotTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
 
         /** @Then the createdAt timestamp is set */
-        self::assertInstanceOf(Instant::class, $snapshot->createdAt());
+        self::assertInstanceOf(Utc::class, $snapshot->createdAt());
     }
 
     public function testFromAggregateCarriesDomainFieldsInState(): void
@@ -125,7 +125,7 @@ final class SnapshotTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $original);
 
         /** @When reconstituting from the snapshot */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: [], snapshot: $snapshot);
+        $reconstituted = Cart::reconstitute(records: [], identity: $cartId, snapshot: $snapshot);
 
         /** @Then the reconstituted aggregate carries the same domain state */
         self::assertSame(['prod-roundtrip'], $reconstituted->productIds());
@@ -173,7 +173,7 @@ final class SnapshotTest extends TestCase
         $aggregateVersion = AggregateVersion::first();
 
         /** @And a known creation timestamp */
-        $createdAt = Instant::now();
+        $createdAt = Utc::now();
 
         /** @And the first snapshot built from those fields */
         $first = Snapshot::restore(
@@ -206,7 +206,7 @@ final class SnapshotTest extends TestCase
         $aggregateVersion = AggregateVersion::first();
 
         /** @And a known creation timestamp */
-        $createdAt = Instant::now();
+        $createdAt = Utc::now();
 
         /** @And the first snapshot with type Cart */
         $first = Snapshot::restore(

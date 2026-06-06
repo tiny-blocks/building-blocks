@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace TinyBlocks\BuildingBlocks\Aggregate;
 
 use TinyBlocks\BuildingBlocks\Exceptions\InvalidAggregateVersion;
+use TinyBlocks\BuildingBlocks\Ordinal;
+use TinyBlocks\BuildingBlocks\OrdinalBehavior;
 use TinyBlocks\Vo\ValueObject;
 use TinyBlocks\Vo\ValueObjectBehavior;
 
-final readonly class AggregateVersion implements ValueObject
+final readonly class AggregateVersion implements ValueObject, Ordinal
 {
     use ValueObjectBehavior;
+    use OrdinalBehavior;
 
     private function __construct(public int $value)
     {
@@ -61,25 +64,8 @@ final readonly class AggregateVersion implements ValueObject
         return new AggregateVersion(value: $this->value + 1);
     }
 
-    /**
-     * Tells whether this aggregate version is strictly after the given one.
-     *
-     * @param AggregateVersion $other The aggregate version to compare against.
-     * @return bool True when this value is greater than the other's.
-     */
-    public function isAfter(AggregateVersion $other): bool
+    public function value(): int
     {
-        return $this->value > $other->value;
-    }
-
-    /**
-     * Tells whether this aggregate version is strictly before the given one.
-     *
-     * @param AggregateVersion $other The aggregate version to compare against.
-     * @return bool True when this value is less than the other's.
-     */
-    public function isBefore(AggregateVersion $other): bool
-    {
-        return $this->value < $other->value;
+        return $this->value;
     }
 }

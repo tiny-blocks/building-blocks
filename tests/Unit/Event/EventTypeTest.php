@@ -27,7 +27,7 @@ final class EventTypeTest extends TestCase
         self::assertTrue($constructor->isPrivate());
     }
 
-    public function testFromDomainEventUsesTheShortClassNameOfTheDomainEvent(): void
+    public function testFromDomainEventUsesTheDeclaredEventTypeIdentifier(): void
     {
         /** @Given a domain event instance */
         $placedEvent = new OrderPlaced(item: 'book');
@@ -35,7 +35,7 @@ final class EventTypeTest extends TestCase
         /** @When creating an EventType from the domain event */
         $eventType = EventType::fromDomainEvent(event: $placedEvent);
 
-        /** @Then the value matches the short class name */
+        /** @Then the value matches the event's declared type identifier */
         self::assertSame('OrderPlaced', $eventType->value);
     }
 

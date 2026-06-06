@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace TinyBlocks\BuildingBlocks\Aggregate;
 
 use TinyBlocks\BuildingBlocks\Exceptions\InvalidModelVersion;
+use TinyBlocks\BuildingBlocks\Ordinal;
+use TinyBlocks\BuildingBlocks\OrdinalBehavior;
 use TinyBlocks\Vo\ValueObject;
 use TinyBlocks\Vo\ValueObjectBehavior;
 
-final readonly class ModelVersion implements ValueObject
+final readonly class ModelVersion implements ValueObject, Ordinal
 {
     use ValueObjectBehavior;
+    use OrdinalBehavior;
 
     private function __construct(public int $value)
     {
@@ -41,25 +44,8 @@ final readonly class ModelVersion implements ValueObject
         return new ModelVersion(value: 0);
     }
 
-    /**
-     * Tells whether this model version is strictly after the given one.
-     *
-     * @param ModelVersion $other The model version to compare against.
-     * @return bool True when this value is greater than the other's.
-     */
-    public function isAfter(ModelVersion $other): bool
+    public function value(): int
     {
-        return $this->value > $other->value;
-    }
-
-    /**
-     * Tells whether this model version is strictly before the given one.
-     *
-     * @param ModelVersion $other The model version to compare against.
-     * @return bool True when this value is less than the other's.
-     */
-    public function isBefore(ModelVersion $other): bool
-    {
-        return $this->value < $other->value;
+        return $this->value;
     }
 }

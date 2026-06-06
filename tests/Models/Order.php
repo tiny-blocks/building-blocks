@@ -9,6 +9,7 @@ use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRootBehavior;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
+use TinyBlocks\BuildingBlocks\Event\EventRecords;
 
 final class Order implements EventualAggregateRoot
 {
@@ -20,10 +21,10 @@ final class Order implements EventualAggregateRoot
     {
     }
 
-    public static function reconstitute(
+    public static function reconstitutePartial(
         Identity $identity,
-        AggregateVersion $aggregateVersion,
-        array $state = []
+        array $aggregateState,
+        AggregateVersion $aggregateVersion
     ): static {
         if (!$identity instanceof OrderId) {
             $template = 'Expected identity of type <%s>, got <%s>.';
@@ -33,6 +34,7 @@ final class Order implements EventualAggregateRoot
 
         $order = new Order(id: $identity);
         $order->aggregateVersion = $aggregateVersion;
+        $order->recordedEvents = EventRecords::createFromEmpty();
 
         return $order;
     }
@@ -41,7 +43,7 @@ final class Order implements EventualAggregateRoot
     {
         $order = new Order(id: $orderId);
         $order->status = 'placed';
-        $order->push(event: new OrderPlaced(item: $item));
+        $order->pushEvent(event: new OrderPlaced(item: $item));
 
         return $order;
     }
@@ -49,6 +51,6 @@ final class Order implements EventualAggregateRoot
     public function ship(string $carrier): void
     {
         $this->status = 'shipped';
-        $this->push(event: new OrderShipped(carrier: $carrier));
+        $this->pushEvent(event: new OrderShipped(carrier: $carrier));
     }
 }

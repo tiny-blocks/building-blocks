@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Event;
 
-use Ramsey\Uuid\UuidInterface;
 use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
-use TinyBlocks\Time\Instant;
+use TinyBlocks\BuildingBlocks\Utc;
+use TinyBlocks\BuildingBlocks\Uuid;
 use TinyBlocks\Vo\ValueObject;
 use TinyBlocks\Vo\ValueObjectBehavior;
 
@@ -32,11 +32,11 @@ final readonly class IntegrationEventRecord implements ValueObject
     use ValueObjectBehavior;
 
     private function __construct(
-        public UuidInterface $id,
+        public Uuid $id,
         public IntegrationEvent $event,
         public Revision $revision,
         public EventType $eventType,
-        public Instant $occurredAt,
+        public Utc $occurredAt,
         public Identity $aggregateId,
         public string $aggregateType,
         public AggregateVersion $aggregateVersion

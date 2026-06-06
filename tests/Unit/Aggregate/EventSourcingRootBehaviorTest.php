@@ -63,7 +63,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart = Cart::blank(identity: $cartId);
 
         /** @Then the recorded events buffer is empty */
-        self::assertTrue($cart->recordedEvents()->isEmpty());
+        self::assertTrue($cart->peekEvents()->isEmpty());
     }
 
     public function testDomainOperationAppliesStateFromEmittedEvent(): void
@@ -102,7 +102,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart->addProduct(productId: 'prod-1');
 
         /** @Then one event is recorded */
-        self::assertSame(1, $cart->recordedEvents()->count());
+        self::assertSame(1, $cart->peekEvents()->count());
     }
 
     public function testFirstRecordedEventCarriesEnvelopeMetadata(): void
@@ -117,7 +117,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart->addProduct(productId: 'prod-abc');
 
         /** @When inspecting the first recorded event */
-        $record = $cart->recordedEvents()->first();
+        $record = $cart->peekEvents()->first();
 
         /** @Then the envelope carries the expected metadata */
         self::assertSame('ProductAdded', $record->eventType->value);
@@ -138,7 +138,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $original = Cart::withProducts(cartId: $cartId, count: 2);
 
         /** @When reconstituting from the event stream */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
+        $reconstituted = Cart::reconstitute(records: $original->peekEvents(), identity: $cartId);
 
         /** @Then the replayed state preserves event order */
         self::assertSame(['prod-1', 'prod-2'], $reconstituted->productIds());
@@ -162,7 +162,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $original->addProduct(productId: 'mango');
 
         /** @When reconstituting from the event stream */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
+        $reconstituted = Cart::reconstitute(records: $original->peekEvents(), identity: $cartId);
 
         /** @Then the replayed state preserves the exact insertion order */
         self::assertSame(['zebra', 'apple', 'mango'], $reconstituted->productIds());
@@ -177,7 +177,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $original = Cart::withProducts(cartId: $cartId, count: 2);
 
         /** @When reconstituting from the event stream */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
+        $reconstituted = Cart::reconstitute(records: $original->peekEvents(), identity: $cartId);
 
         /** @Then the aggregate version equals the last event's */
         self::assertSame(2, $reconstituted->aggregateVersion()->value);
@@ -189,7 +189,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cartId = new CartId(value: 'cart-7');
 
         /** @When reconstituting with no events */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: []);
+        $reconstituted = Cart::reconstitute(records: [], identity: $cartId);
 
         /** @Then the state matches a blank aggregate */
         self::assertSame([], $reconstituted->productIds());
@@ -201,7 +201,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cartId = new CartId(value: 'cart-7b');
 
         /** @When reconstituting with no events */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: []);
+        $reconstituted = Cart::reconstitute(records: [], identity: $cartId);
 
         /** @Then the aggregate version remains at the initial value */
         self::assertSame(0, $reconstituted->aggregateVersion()->value);
@@ -222,7 +222,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
 
         /** @When reconstituting from the snapshot only */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: [], snapshot: $snapshot);
+        $reconstituted = Cart::reconstitute(records: [], identity: $cartId, snapshot: $snapshot);
 
         /** @Then the domain state is fully restored */
         self::assertSame(['prod-snapshot'], $reconstituted->productIds());
@@ -243,7 +243,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);
 
         /** @When reconstituting from the snapshot only */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: [], snapshot: $snapshot);
+        $reconstituted = Cart::reconstitute(records: [], identity: $cartId, snapshot: $snapshot);
 
         /** @Then the aggregate version matches the snapshot's */
         self::assertSame(1, $reconstituted->aggregateVersion()->value);
@@ -267,14 +267,14 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart->addProduct(productId: 'prod-2');
 
         /** @And the records after the snapshot filtered out */
-        $laterRecords = $cart->recordedEvents()->filter(
+        $laterRecords = $cart->peekEvents()->filter(
             predicates: static fn($record): bool => $record->aggregateVersion->isAfter(
                 other: $snapshot->aggregateVersion()
             )
         );
 
         /** @When reconstituting from the snapshot and the later records */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: $laterRecords, snapshot: $snapshot);
+        $reconstituted = Cart::reconstitute(records: $laterRecords, identity: $cartId, snapshot: $snapshot);
 
         /** @Then the full state is restored */
         self::assertSame(['prod-1', 'prod-2'], $reconstituted->productIds());
@@ -298,14 +298,14 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart->addProduct(productId: 'prod-2');
 
         /** @And the records after the snapshot filtered out */
-        $laterRecords = $cart->recordedEvents()->filter(
+        $laterRecords = $cart->peekEvents()->filter(
             predicates: static fn($record): bool => $record->aggregateVersion->isAfter(
                 other: $snapshot->aggregateVersion()
             )
         );
 
         /** @When reconstituting from the snapshot and the later records */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: $laterRecords, snapshot: $snapshot);
+        $reconstituted = Cart::reconstitute(records: $laterRecords, identity: $cartId, snapshot: $snapshot);
 
         /** @Then the aggregate version reflects the last applied event */
         self::assertSame(2, $reconstituted->aggregateVersion()->value);
@@ -320,10 +320,10 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $original = Cart::withProducts(cartId: $cartId, count: 1);
 
         /** @When reconstituting from that event stream */
-        $reconstituted = Cart::reconstitute(identity: $cartId, records: $original->recordedEvents());
+        $reconstituted = Cart::reconstitute(records: $original->peekEvents(), identity: $cartId);
 
         /** @Then the reconstituted aggregate has no fresh recorded events */
-        self::assertTrue($reconstituted->recordedEvents()->isEmpty());
+        self::assertTrue($reconstituted->peekEvents()->isEmpty());
     }
 
     public function testExplicitHandlerIsInvokedForRegisteredEvent(): void
@@ -347,7 +347,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart->addProductV2(productId: 'prod-v2', quantity: 3);
 
         /** @Then the recorded event carries revision 2 */
-        self::assertSame(2, $cart->recordedEvents()->first()->revision->value);
+        self::assertSame(2, $cart->peekEvents()->first()->revision->value);
     }
 
     public function testExplicitCartThrowsForUnregisteredEvent(): void
@@ -356,7 +356,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cartId = new CartId(value: 'cart-explicit-err');
 
         /** @And an OrderPlaced record from a foreign aggregate */
-        $orderRecords = Order::place(orderId: new OrderId(value: 'ord-err'), item: 'book')->recordedEvents();
+        $orderRecords = Order::place(orderId: new OrderId(value: 'ord-err'), item: 'book')->peekEvents();
 
         /** @Then a LogicException naming the unregistered event should be thrown */
         $this->expectException(LogicException::class);
@@ -369,7 +369,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         );
 
         /** @When reconstituting ExplicitCart from the OrderPlaced records */
-        ExplicitCart::reconstitute(identity: $cartId, records: $orderRecords);
+        ExplicitCart::reconstitute(records: $orderRecords, identity: $cartId);
     }
 
     public function testReconstituteThrowsWhenHandlerMethodIsMissing(): void
@@ -390,6 +390,6 @@ final class EventSourcingRootBehaviorTest extends TestCase
         );
 
         /** @When reconstituting an aggregate without the handler */
-        CartWithoutHandler::reconstitute(identity: $cartId, records: $original->recordedEvents());
+        CartWithoutHandler::reconstitute(records: $original->peekEvents(), identity: $cartId);
     }
 }

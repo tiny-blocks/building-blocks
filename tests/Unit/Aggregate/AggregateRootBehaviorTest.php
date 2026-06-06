@@ -76,8 +76,9 @@ final class AggregateRootBehaviorTest extends TestCase
     public function testReconstitutedAggregateVersionMatchesPersistedValue(): void
     {
         /** @Given an Order reconstituted with a persisted aggregate version of 5 */
-        $order = Order::reconstitute(
+        $order = Order::reconstitutePartial(
             identity: new OrderId(value: 'ord-3'),
+            aggregateState: [],
             aggregateVersion: AggregateVersion::of(value: 5)
         );
 
@@ -91,8 +92,9 @@ final class AggregateRootBehaviorTest extends TestCase
     public function testPushAfterReconstituteAdvancesVersionByOne(): void
     {
         /** @Given an Order reconstituted with a persisted aggregate version of 5 */
-        $order = Order::reconstitute(
+        $order = Order::reconstitutePartial(
             identity: new OrderId(value: 'ord-4'),
+            aggregateState: [],
             aggregateVersion: AggregateVersion::of(value: 5)
         );
 
@@ -101,5 +103,20 @@ final class AggregateRootBehaviorTest extends TestCase
 
         /** @Then the aggregate version advances by one */
         self::assertSame(6, $order->aggregateVersion()->value);
+    }
+
+    public function testPullDrainsRecordedEventsAndClearsTheBuffer(): void
+    {
+        /** @Given an order with a recorded event */
+        $order = Order::place(orderId: new OrderId(value: 'ord-pull'), item: 'pen');
+
+        /** @When pulling the recorded events */
+        $pulled = $order->pullEvents();
+
+        /** @Then the pulled batch holds the recorded event */
+        self::assertSame(1, $pulled->count());
+
+        /** @And the aggregate buffer is now empty */
+        self::assertTrue($order->peekEvents()->isEmpty());
     }
 }

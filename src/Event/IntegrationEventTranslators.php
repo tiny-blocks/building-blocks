@@ -14,6 +14,8 @@ use TinyBlocks\Collection\Collection;
  * <code>true</code> for the given record, or <code>null</code> when no translator handles
  * it. A null result is the canonical signal that the event is purely internal and must
  * not cross the bounded-context boundary.</p>
+ *
+ * @extends Collection<IntegrationEventTranslator>
  */
 final class IntegrationEventTranslators extends Collection
 {
@@ -26,12 +28,10 @@ final class IntegrationEventTranslators extends Collection
      */
     public function findFor(EventRecord $record): ?IntegrationEventTranslator
     {
-        $translator = $this->findBy(
+        return $this->findBy(
             predicates: static fn(IntegrationEventTranslator $translator): bool => $translator->supports(
                 record: $record
             )
         );
-
-        return $translator instanceof IntegrationEventTranslator ? $translator : null;
     }
 }
