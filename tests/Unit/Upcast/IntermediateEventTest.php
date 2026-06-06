@@ -12,7 +12,7 @@ use TinyBlocks\BuildingBlocks\Upcast\IntermediateEvent;
 
 final class IntermediateEventTest extends TestCase
 {
-    public function testIntermediateEventExposesEveryConstructorField(): void
+    public function testIntermediateEventExposesEveryField(): void
     {
         /** @Given an event type */
         $eventType = EventType::fromString(value: 'ProductAdded');
@@ -23,8 +23,8 @@ final class IntermediateEventTest extends TestCase
         /** @And a serialized event payload */
         $serializedEvent = ['productId' => 'prod-1'];
 
-        /** @When constructing the intermediate event */
-        $event = new IntermediateEvent(type: $eventType, revision: $revision, serializedEvent: $serializedEvent);
+        /** @When building the intermediate event via the factory */
+        $event = IntermediateEvent::from(type: $eventType, revision: $revision, serializedEvent: $serializedEvent);
 
         /** @Then each public field is accessible */
         self::assertSame($eventType, $event->type);
@@ -35,7 +35,7 @@ final class IntermediateEventTest extends TestCase
     public function testWithRevisionOnlyReplacesTheRevision(): void
     {
         /** @Given an intermediate event at revision 1 */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -51,7 +51,7 @@ final class IntermediateEventTest extends TestCase
     public function testWithRevisionPreservesTheTypeAndPayload(): void
     {
         /** @Given an intermediate event at revision 1 */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -68,7 +68,7 @@ final class IntermediateEventTest extends TestCase
     public function testWithRevisionReturnsANewInstance(): void
     {
         /** @Given an intermediate event at revision 1 */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -85,7 +85,7 @@ final class IntermediateEventTest extends TestCase
     public function testWithSerializedEventOnlyReplacesThePayload(): void
     {
         /** @Given an intermediate event with an original payload */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -101,7 +101,7 @@ final class IntermediateEventTest extends TestCase
     public function testWithSerializedEventPreservesTheTypeAndRevision(): void
     {
         /** @Given an intermediate event with an original payload */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -127,10 +127,10 @@ final class IntermediateEventTest extends TestCase
         $payload = ['productId' => 'prod-1'];
 
         /** @And a first intermediate event built from those values */
-        $first = new IntermediateEvent(type: $eventType, revision: $revision, serializedEvent: $payload);
+        $first = IntermediateEvent::from(type: $eventType, revision: $revision, serializedEvent: $payload);
 
         /** @And a second intermediate event built from the same values */
-        $second = new IntermediateEvent(type: $eventType, revision: $revision, serializedEvent: $payload);
+        $second = IntermediateEvent::from(type: $eventType, revision: $revision, serializedEvent: $payload);
 
         /** @When comparing them */
         $areEqual = $first->equals(other: $second);
@@ -148,10 +148,10 @@ final class IntermediateEventTest extends TestCase
         $revision = Revision::initial();
 
         /** @And a first event carrying payload a */
-        $first = new IntermediateEvent(type: $eventType, revision: $revision, serializedEvent: ['productId' => 'a']);
+        $first = IntermediateEvent::from(type: $eventType, revision: $revision, serializedEvent: ['productId' => 'a']);
 
         /** @And a second event carrying payload b */
-        $second = new IntermediateEvent(type: $eventType, revision: $revision, serializedEvent: ['productId' => 'b']);
+        $second = IntermediateEvent::from(type: $eventType, revision: $revision, serializedEvent: ['productId' => 'b']);
 
         /** @When comparing them */
         $areEqual = $first->equals(other: $second);
@@ -166,14 +166,14 @@ final class IntermediateEventTest extends TestCase
         $revision = Revision::initial();
 
         /** @And differing only by type */
-        $first = new IntermediateEvent(
+        $first = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: $revision,
             serializedEvent: ['productId' => 'prod-1']
         );
 
         /** @And a counterpart with a different type */
-        $second = new IntermediateEvent(
+        $second = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductRemoved'),
             revision: $revision,
             serializedEvent: ['productId' => 'prod-1']
@@ -192,14 +192,14 @@ final class IntermediateEventTest extends TestCase
         $eventType = EventType::fromString(value: 'ProductAdded');
 
         /** @And differing only by revision */
-        $first = new IntermediateEvent(
+        $first = IntermediateEvent::from(
             type: $eventType,
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
         );
 
         /** @And a counterpart at a later revision */
-        $second = new IntermediateEvent(
+        $second = IntermediateEvent::from(
             type: $eventType,
             revision: Revision::of(value: 2),
             serializedEvent: ['productId' => 'prod-1']
@@ -215,7 +215,7 @@ final class IntermediateEventTest extends TestCase
     public function testEqualsReturnsFalseWhenOtherIsDifferentValueObjectType(): void
     {
         /** @Given an intermediate event */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -234,14 +234,14 @@ final class IntermediateEventTest extends TestCase
     public function testFromIterableWithTypedFieldsCreatesEqualEvent(): void
     {
         /** @Given an existing intermediate event */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
         );
 
         /** @When reconstituting from an iterable of typed values */
-        $restored = IntermediateEvent::fromIterable(iterable: [
+        $restored = IntermediateEvent::buildFrom(source: [
             'type'            => EventType::fromString(value: 'ProductAdded'),
             'revision'        => Revision::initial(),
             'serializedEvent' => ['productId' => 'prod-1']
@@ -254,7 +254,7 @@ final class IntermediateEventTest extends TestCase
     public function testToArraySerializesTypeAndRevisionToScalars(): void
     {
         /** @Given an intermediate event */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -272,7 +272,7 @@ final class IntermediateEventTest extends TestCase
     public function testToJsonSerializesToJsonString(): void
     {
         /** @Given an intermediate event */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']

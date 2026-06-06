@@ -6,6 +6,9 @@ namespace TinyBlocks\BuildingBlocks\Upcast;
 
 use TinyBlocks\Collection\Collection;
 
+/**
+ * @extends Collection<Upcaster>
+ */
 final class Upcasters extends Collection
 {
     /**
@@ -24,7 +27,6 @@ final class Upcasters extends Collection
             return $upcaster->upcast(event: $carried);
         };
 
-        /** @var IntermediateEvent $upcasted */
         $upcasted = $this->reduce(accumulator: $upcast, initial: $event);
 
         return $upcasted;

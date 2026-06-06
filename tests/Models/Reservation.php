@@ -22,7 +22,7 @@ final class Reservation implements EventualAggregateRoot
     public static function book(ReservationId $id): Reservation
     {
         $reservation = new Reservation(id: $id, status: 'pending');
-        $reservation->push(event: new ReservationBooked());
+        $reservation->pushEvent(event: new ReservationBooked());
 
         return $reservation;
     }
@@ -36,6 +36,6 @@ final class Reservation implements EventualAggregateRoot
         }
 
         $this->status = 'confirmed';
-        $this->push(event: new ReservationConfirmed());
+        $this->pushEvent(event: new ReservationConfirmed());
     }
 }

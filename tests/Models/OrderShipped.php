@@ -14,4 +14,9 @@ final readonly class OrderShipped implements DomainEvent
     public function __construct(public string $carrier)
     {
     }
+
+    public function eventType(): string
+    {
+        return 'OrderShipped';
+    }
 }

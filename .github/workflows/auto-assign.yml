@@ -1,4 +1,4 @@
-name: Auto assign
+name: Auto assign issues and pull requests
 
 on:
   issues:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   auto-assign:
-    name: Auto assign issues and pull requests
+    name: Auto assign
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

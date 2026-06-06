@@ -5,15 +5,11 @@ declare(strict_types=1);
 namespace Test\TinyBlocks\BuildingBlocks\Unit\Event;
 
 use PHPUnit\Framework\TestCase;
-use Ramsey\Uuid\Uuid;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderPlaced;
 use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
-use TinyBlocks\BuildingBlocks\Event\EventType;
-use TinyBlocks\BuildingBlocks\Event\Revision;
-use TinyBlocks\Time\Instant;
 
 final class EventRecordsTest extends TestCase
 {
@@ -35,12 +31,8 @@ final class EventRecordsTest extends TestCase
         $records = EventRecords::createFromEmpty();
 
         /** @And a freshly built event record */
-        $record = new EventRecord(
-            id: Uuid::uuid4(),
+        $record = EventRecord::from(
             event: new OrderPlaced(item: 'book'),
-            revision: Revision::initial(),
-            eventType: EventType::fromString(value: 'OrderPlaced'),
-            occurredAt: Instant::now(),
             aggregateId: new OrderId(value: 'ord-1'),
             aggregateType: 'Order',
             aggregateVersion: AggregateVersion::first()
@@ -56,12 +48,8 @@ final class EventRecordsTest extends TestCase
     public function testFirstElementRoundTripsTheAddedRecord(): void
     {
         /** @Given a freshly built event record */
-        $record = new EventRecord(
-            id: Uuid::uuid4(),
+        $record = EventRecord::from(
             event: new OrderPlaced(item: 'book'),
-            revision: Revision::initial(),
-            eventType: EventType::fromString(value: 'OrderPlaced'),
-            occurredAt: Instant::now(),
             aggregateId: new OrderId(value: 'ord-1'),
             aggregateType: 'Order',
             aggregateVersion: AggregateVersion::first()

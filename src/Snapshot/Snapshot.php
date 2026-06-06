@@ -6,7 +6,7 @@ namespace TinyBlocks\BuildingBlocks\Snapshot;
 
 use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
-use TinyBlocks\Time\Instant;
+use TinyBlocks\BuildingBlocks\Utc;
 use TinyBlocks\Vo\ValueObject;
 use TinyBlocks\Vo\ValueObjectBehavior;
 
@@ -16,7 +16,7 @@ final readonly class Snapshot implements ValueObject
 
     private function __construct(
         public string $aggregateType,
-        public Instant $createdAt,
+        public Utc $createdAt,
         public mixed $aggregateId,
         public array $aggregateState,
         public AggregateVersion $aggregateVersion
@@ -27,7 +27,7 @@ final readonly class Snapshot implements ValueObject
      * Creates a Snapshot from the persisted fields.
      *
      * @param string $aggregateType The short class name of the aggregate.
-     * @param Instant $createdAt The instant the snapshot was taken.
+     * @param Utc $createdAt The instant the snapshot was taken.
      * @param mixed $aggregateId The aggregate identity raw value.
      * @param array<string, mixed> $aggregateState The captured aggregate state keyed by property name.
      * @param AggregateVersion $aggregateVersion The aggregate version captured with the snapshot.
@@ -35,7 +35,7 @@ final readonly class Snapshot implements ValueObject
      */
     public static function restore(
         string $aggregateType,
-        Instant $createdAt,
+        Utc $createdAt,
         mixed $aggregateId,
         array $aggregateState,
         AggregateVersion $aggregateVersion
@@ -59,7 +59,7 @@ final readonly class Snapshot implements ValueObject
     {
         return new Snapshot(
             aggregateType: $aggregate->aggregateType(),
-            createdAt: Instant::now(),
+            createdAt: Utc::now(),
             aggregateId: $aggregate->identityValue(),
             aggregateState: $aggregate->snapshotState(),
             aggregateVersion: $aggregate->aggregateVersion()
@@ -79,9 +79,9 @@ final readonly class Snapshot implements ValueObject
     /**
      * Returns the creation timestamp.
      *
-     * @return Instant The instant the snapshot was taken.
+     * @return Utc The instant the snapshot was taken.
      */
-    public function createdAt(): Instant
+    public function createdAt(): Utc
     {
         return $this->createdAt;
     }

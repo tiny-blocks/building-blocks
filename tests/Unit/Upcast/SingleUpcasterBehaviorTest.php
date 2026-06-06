@@ -15,7 +15,7 @@ final class SingleUpcasterBehaviorTest extends TestCase
     public function testUpcastBumpsTheRevisionOfAMatchingEvent(): void
     {
         /** @Given a ProductAdded event at revision 1 */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -31,7 +31,7 @@ final class SingleUpcasterBehaviorTest extends TestCase
     public function testUpcastEnrichesThePayloadOfAMatchingEvent(): void
     {
         /** @Given a ProductAdded event at revision 1 */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::initial(),
             serializedEvent: ['productId' => 'prod-1']
@@ -47,7 +47,7 @@ final class SingleUpcasterBehaviorTest extends TestCase
     public function testUpcastReturnsUnchangedEventForMismatchedType(): void
     {
         /** @Given an event whose type is not the one the upcaster handles */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'OrderPlaced'),
             revision: Revision::initial(),
             serializedEvent: ['item' => 'book']
@@ -63,7 +63,7 @@ final class SingleUpcasterBehaviorTest extends TestCase
     public function testUpcastReturnsUnchangedEventForMismatchedRevision(): void
     {
         /** @Given a ProductAdded event at revision 2, past the upcaster's FROM_REVISION */
-        $event = new IntermediateEvent(
+        $event = IntermediateEvent::from(
             type: EventType::fromString(value: 'ProductAdded'),
             revision: Revision::of(value: 2),
             serializedEvent: ['productId' => 'prod-1', 'quantity' => 1]

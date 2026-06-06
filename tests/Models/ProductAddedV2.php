@@ -20,4 +20,9 @@ final readonly class ProductAddedV2 implements DomainEvent
     {
         return Revision::of(value: 2);
     }
+
+    public function eventType(): string
+    {
+        return 'ProductAddedV2';
+    }
 }

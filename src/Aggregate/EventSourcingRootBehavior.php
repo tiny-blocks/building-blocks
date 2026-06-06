@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Aggregate;
 
-use ReflectionClass;
-use ReflectionProperty;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\DomainEvent;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
-use TinyBlocks\BuildingBlocks\Event\EventRecords;
 use TinyBlocks\BuildingBlocks\Exceptions\EventHandlerMethodNotFound;
 use TinyBlocks\BuildingBlocks\Exceptions\NoEventHandlerRegistered;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
@@ -20,18 +17,15 @@ trait EventSourcingRootBehavior
 
     public static function blank(Identity $identity): static
     {
-        $aggregate = new ReflectionClass(objectOrClass: static::class)->newInstanceWithoutConstructor();
-        new ReflectionProperty(class: $aggregate, property: $aggregate->identityName())
-            ->setValue($aggregate, $identity);
+        $aggregate = static::createBlank(identity: $identity);
         $aggregate->aggregateVersion = AggregateVersion::initial();
-        $aggregate->recordedEvents = EventRecords::createFromEmpty();
 
         return $aggregate;
     }
 
     public static function reconstitute(
-        Identity $identity,
         iterable $records,
+        Identity $identity,
         ?Snapshot $snapshot = null
     ): static {
         $aggregate = static::blank(identity: $identity);
@@ -77,8 +71,7 @@ trait EventSourcingRootBehavior
         $this->nextAggregateVersion();
         $record = $this->buildEventRecord(event: $event);
         $this->applyEvent(record: $record);
-        $this->recordedEvents = ($this->recordedEvents ?? EventRecords::createFromEmpty())
-            ->add(elements: $record);
+        $this->appendRecordedEvent(record: $record);
     }
 
     private function applyEvent(EventRecord $record): void

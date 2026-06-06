@@ -20,7 +20,7 @@ final class IntegrationEventTranslatorsTest extends TestCase
     public function testFindForReturnsFirstMatchingTranslatorAmongMultiple(): void
     {
         /** @Given an event record for an OrderPlaced event */
-        $record = EventRecord::of(
+        $record = EventRecord::from(
             event: new OrderPlaced(item: 'book'),
             aggregateId: new OrderId(value: 'ord-1'),
             aggregateType: 'Order',
@@ -69,7 +69,7 @@ final class IntegrationEventTranslatorsTest extends TestCase
     public function testFindForReturnsNullWhenNoTranslatorSupportsTheRecord(): void
     {
         /** @Given an event record */
-        $record = EventRecord::of(
+        $record = EventRecord::from(
             event: new OrderPlaced(item: 'book'),
             aggregateId: new OrderId(value: 'ord-1'),
             aggregateType: 'Order',
@@ -103,7 +103,7 @@ final class IntegrationEventTranslatorsTest extends TestCase
     public function testFindForReturnsNullForEmptyCollection(): void
     {
         /** @Given an event record */
-        $record = EventRecord::of(
+        $record = EventRecord::from(
             event: new OrderPlaced(item: 'book'),
             aggregateId: new OrderId(value: 'ord-1'),
             aggregateType: 'Order',

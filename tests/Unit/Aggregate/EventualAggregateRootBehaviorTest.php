@@ -7,6 +7,7 @@ namespace Test\TinyBlocks\BuildingBlocks\Unit\Aggregate;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use Test\TinyBlocks\BuildingBlocks\Models\GuestReservation;
 use Test\TinyBlocks\BuildingBlocks\Models\Order;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderPlaced;
@@ -14,6 +15,7 @@ use Test\TinyBlocks\BuildingBlocks\Models\OrderShipped;
 use Test\TinyBlocks\BuildingBlocks\Models\Reservation;
 use Test\TinyBlocks\BuildingBlocks\Models\ReservationId;
 use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
+use TinyBlocks\BuildingBlocks\Exceptions\IncompleteAggregateState;
 
 final class EventualAggregateRootBehaviorTest extends TestCase
 {
@@ -53,7 +55,7 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $order->ship(carrier: 'FedEx');
 
         /** @When retrieving recorded events */
-        $records = $order->recordedEvents();
+        $records = $order->peekEvents();
 
         /** @Then the count matches the number of events */
         self::assertSame(2, $records->count());
@@ -68,7 +70,7 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $order = Order::place(orderId: $orderId, item: 'chair');
 
         /** @When inspecting the first recorded record */
-        $record = $order->recordedEvents()->first();
+        $record = $order->peekEvents()->first();
 
         /** @Then the envelope carries the placement metadata */
         self::assertSame('OrderPlaced', $record->eventType->value);
@@ -89,7 +91,7 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $order->ship(carrier: 'UPS');
 
         /** @When inspecting the last recorded record */
-        $record = $order->recordedEvents()->last();
+        $record = $order->peekEvents()->last();
 
         /** @Then the envelope carries the shipping metadata */
         self::assertSame('OrderShipped', $record->eventType->value);
@@ -104,10 +106,10 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $order = Order::place(orderId: new OrderId(value: 'ord-6'), item: 'mug');
 
         /** @And an external mutation applied to the first retrieved copy */
-        $order->recordedEvents()->add($order->recordedEvents()->first());
+        $order->peekEvents()->merge(other: $order->peekEvents());
 
         /** @When retrieving the recorded events again */
-        $secondCopy = $order->recordedEvents();
+        $secondCopy = $order->peekEvents();
 
         /** @Then the aggregate's own buffer is unaffected by the external mutation */
         self::assertSame(1, $secondCopy->count());
@@ -119,13 +121,13 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $order = Order::place(orderId: new OrderId(value: 'ord-7'), item: 'bottle');
 
         /** @And the buffer drained without clearing, simulating a save that reads but does not reset */
-        $firstBatch = $order->recordedEvents();
+        $firstBatch = $order->peekEvents();
 
         /** @When a second operation emits a further event on the same instance */
         $order->ship(carrier: 'DHL');
 
         /** @Then the buffer accumulates events from both operations */
-        self::assertSame(2, $order->recordedEvents()->count());
+        self::assertSame(2, $order->peekEvents()->count());
         self::assertSame(1, $firstBatch->count());
     }
 
@@ -135,8 +137,9 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $reservationId = new ReservationId(value: 'res-1');
 
         /** @When reconstituting via the trait default with no state */
-        $reservation = Reservation::reconstitute(
+        $reservation = Reservation::reconstitutePartial(
             identity: $reservationId,
+            aggregateState: [],
             aggregateVersion: AggregateVersion::of(value: 5)
         );
 
@@ -144,29 +147,45 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         self::assertTrue($reservation->identity()->equals(other: $reservationId));
     }
 
+    public function testReconstituteInitializesEmptyRecordedEventsBuffer(): void
+    {
+        /** @Given a reservation reconstituted via the trait default */
+        $reservation = Reservation::reconstitutePartial(
+            identity: new ReservationId(value: 'res-1'),
+            aggregateState: [],
+            aggregateVersion: AggregateVersion::of(value: 5)
+        );
+
+        /** @When retrieving the recorded events */
+        $records = $reservation->peekEvents();
+
+        /** @Then the buffer starts empty */
+        self::assertTrue($records->isEmpty());
+    }
+
     public function testReconstituteRestoresAggregateVersionForNextEvent(): void
     {
         /** @Given a reservation reconstituted at version 5 with pending status */
-        $reservation = Reservation::reconstitute(
+        $reservation = Reservation::reconstitutePartial(
             identity: new ReservationId(value: 'res-1'),
-            aggregateVersion: AggregateVersion::of(value: 5),
-            state: ['status' => 'pending']
+            aggregateState: ['status' => 'pending'],
+            aggregateVersion: AggregateVersion::of(value: 5)
         );
 
         /** @When confirming the reservation */
         $reservation->confirm();
 
         /** @Then the next recorded event carries version 6 */
-        self::assertSame(6, $reservation->recordedEvents()->first()->aggregateVersion->value);
+        self::assertSame(6, $reservation->peekEvents()->first()->aggregateVersion->value);
     }
 
     public function testReconstituteHydratesStateSoCommandsBehaveCorrectly(): void
     {
         /** @Given a reservation reconstituted in confirmed status */
-        $reservation = Reservation::reconstitute(
+        $reservation = Reservation::reconstitutePartial(
             identity: new ReservationId(value: 'res-1'),
-            aggregateVersion: AggregateVersion::of(value: 5),
-            state: ['status' => 'confirmed']
+            aggregateState: ['status' => 'confirmed'],
+            aggregateVersion: AggregateVersion::of(value: 5)
         );
 
         /** @Then a RuntimeException is raised because state was correctly restored */
@@ -182,10 +201,10 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $reservationId = new ReservationId(value: 'res-1');
 
         /** @When reconstituting with a state map carrying a key absent from the aggregate */
-        $reservation = Reservation::reconstitute(
+        $reservation = Reservation::reconstitutePartial(
             identity: $reservationId,
-            aggregateVersion: AggregateVersion::of(value: 5),
-            state: ['status' => 'pending', 'unknownProperty' => 'value']
+            aggregateState: ['status' => 'pending', 'unknownProperty' => 'value'],
+            aggregateVersion: AggregateVersion::of(value: 5)
         );
 
         /** @Then no exception is raised and the known identity is still restored */
@@ -201,14 +220,19 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         /** @When reconstituting an Order with a non-OrderId identity */
-        Order::reconstitute(identity: $foreignIdentity, aggregateVersion: AggregateVersion::of(value: 1));
+        Order::reconstitutePartial(
+            identity: $foreignIdentity,
+            aggregateState: [],
+            aggregateVersion: AggregateVersion::of(value: 1)
+        );
     }
 
     public function testOrderReconstituteRestoresVersionForNextEvent(): void
     {
         /** @Given an Order reconstituted at version 9 */
-        $order = Order::reconstitute(
+        $order = Order::reconstitutePartial(
             identity: new OrderId(value: 'ord-rec-1'),
+            aggregateState: [],
             aggregateVersion: AggregateVersion::of(value: 9)
         );
 
@@ -216,9 +240,100 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $order->ship(carrier: 'DHL');
 
         /** @When inspecting the recorded event */
-        $record = $order->recordedEvents()->first();
+        $record = $order->peekEvents()->first();
 
         /** @Then the event carries version 10 */
         self::assertSame(10, $record->aggregateVersion->value);
+    }
+
+    public function testReconstituteStrictWhenAllRequiredStateProvidedThenMatchesLenientResult(): void
+    {
+        /** @Given a reservation reconstituted leniently with all required state */
+        $lenient = Reservation::reconstitutePartial(
+            identity: new ReservationId(value: 'res-1'),
+            aggregateState: ['status' => 'pending'],
+            aggregateVersion: AggregateVersion::of(value: 5)
+        );
+
+        /** @When reconstituting the same reservation strictly */
+        $strict = Reservation::reconstituteStrict(
+            identity: new ReservationId(value: 'res-1'),
+            aggregateState: ['status' => 'pending'],
+            aggregateVersion: AggregateVersion::of(value: 5)
+        );
+
+        /** @Then the strict result equals the lenient result */
+        self::assertEquals($lenient, $strict);
+    }
+
+    public function testReconstituteStrictWhenRequiredPropertyOmittedThenNamesItIncomplete(): void
+    {
+        /** @Given an identity for an aggregate reconstituted without its required state */
+        $reservationId = new ReservationId(value: 'res-1');
+
+        try {
+            /** @When reconstituting strictly with the required status omitted */
+            Reservation::reconstituteStrict(
+                identity: $reservationId,
+                aggregateState: [],
+                aggregateVersion: AggregateVersion::of(value: 5)
+            );
+        } catch (IncompleteAggregateState $exception) {
+            /** @Then the exception names the uninitialized required property */
+            self::assertSame(['status'], $exception->propertyNames);
+
+            /** @And the message identifies that property */
+            self::assertStringContainsString('status', $exception->getMessage());
+        }
+    }
+
+    public function testReconstituteStrictWhenUnknownKeyProvidedThenStillSucceeds(): void
+    {
+        /** @Given an identity for an aggregate reconstituted with an unknown state key */
+        $reservationId = new ReservationId(value: 'res-1');
+
+        /** @When reconstituting strictly with all required state plus an unknown key */
+        $reservation = Reservation::reconstituteStrict(
+            identity: $reservationId,
+            aggregateState: ['status' => 'pending', 'unknownProperty' => 'value'],
+            aggregateVersion: AggregateVersion::of(value: 5)
+        );
+
+        /** @Then the unknown key is ignored and reconstitution succeeds */
+        self::assertTrue($reservation->identity()->equals(other: $reservationId));
+    }
+
+    public function testReconstituteStrictWhenPropertyHasDefaultThenNotFlagged(): void
+    {
+        /** @Given an identity for an Order whose status property carries a default */
+        $orderId = new OrderId(value: 'ord-strict-1');
+
+        /** @When reconstituting the Order strictly with no state */
+        $order = Order::reconstituteStrict(
+            identity: $orderId,
+            aggregateState: [],
+            aggregateVersion: AggregateVersion::of(value: 1)
+        );
+
+        /** @Then the defaulted status does not trigger an incomplete-state failure */
+        self::assertTrue($order->identity()->equals(other: $orderId));
+    }
+
+    public function testReconstituteStrictWhenMultipleRequiredPropertiesMissingThenNamesThemAll(): void
+    {
+        /** @Given an identity for an aggregate carrying two required properties */
+        $reservationId = new ReservationId(value: 'res-multi');
+
+        try {
+            /** @When reconstituting strictly with both required properties omitted */
+            GuestReservation::reconstituteStrict(
+                identity: $reservationId,
+                aggregateState: [],
+                aggregateVersion: AggregateVersion::of(value: 1)
+            );
+        } catch (IncompleteAggregateState $exception) {
+            /** @Then the exception names every uninitialized required property */
+            self::assertEqualsCanonicalizing(['status', 'guest'], $exception->propertyNames);
+        }
     }
 }

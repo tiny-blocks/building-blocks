@@ -51,9 +51,6 @@ snapshots for event-sourced aggregates (Greg Young), event upcasting for schema 
 event envelope decoupling domain events from infrastructure metadata (Hohpe/Woolf EIP). Every extension is annotated
 in its own PHPDoc with its source.
 
-It is persistence-agnostic and framework-agnostic. It depends only on the other `tiny-blocks` primitives
-(`immutable-object`, `value-object`, `collection`, `time`) and `ramsey/uuid` for event identifiers.
-
 Domain events defined here are plain PHP objects fully compatible with any PSR-14 dispatcher. The library does not
 replace PSR-14, it defines what flows through it. Serialization to wire formats is delegated to adapters such as
 [`tiny-blocks/outbox`](https://github.com/tiny-blocks/outbox).
@@ -260,9 +257,11 @@ concurrency control, and a `ModelVersion` for schema evolution of the aggregate 
 `EventualAggregateRoot` records domain events during the unit of work. State is the source of truth, events are
 emitted as side effects and must be delivered at-least-once.
 
-Aggregates of this type are **use-once**: after the application service drains `recordedEvents()` into the outbox,
-the aggregate instance must be discarded. The recorded-events buffer is never cleared, re-saving the same instance
-fails by design with a duplicate-event error from the outbox.
+After persisting the aggregate state, the application service drains the recorded events with `pullEvents()`, which
+returns them and clears the buffer, so a second save of the same instance does not re-emit the events already
+drained. `peekEvents()` returns a non-destructive copy for inspection without touching the buffer. An instance models a
+single unit of work: reload from the repository before operating on the same logical aggregate again rather than
+reusing a drained instance.
 
 #### Declaring events
 
@@ -332,7 +331,7 @@ fails by design with a duplicate-event error from the outbox.
 
 #### Emitting events from the aggregate
 
-* `push()`: protected method on `EventualAggregateRootBehavior`. Increments the aggregate version and appends a
+* `pushEvent()`: protected method on `EventualAggregateRootBehavior`. Increments the aggregate version and appends a
   fully-built `EventRecord` to the recorded buffer.
 
   ```php
@@ -354,7 +353,7 @@ fails by design with a duplicate-event error from the outbox.
       public static function place(OrderId $id, string $item): Order
       {
           $order = new Order(id: $id);
-          $order->push(event: new OrderPlaced(item: $item));
+          $order->pushEvent(event: new OrderPlaced(item: $item));
 
           return $order;
       }
@@ -363,8 +362,9 @@ fails by design with a duplicate-event error from the outbox.
 
 #### Draining events
 
-* `recordedEvents()`: returns a copy of the buffer, safe to iterate. The aggregate's own buffer is not mutated by
-  external iteration. The buffer is **never cleared** by the library, the aggregate is use-once.
+* `pullEvents()`: drains the buffer. Returns the events recorded since the last drain and clears the buffer, so a
+  subsequent call returns an empty collection until new events are recorded. This is the persistence path: drain
+  into the outbox after the aggregate state has been saved.
 
   ```php
   <?php
@@ -373,20 +373,35 @@ fails by design with a duplicate-event error from the outbox.
 
   $order = Order::place(id: new OrderId(value: 'ord-1'), item: 'book');
 
-  foreach ($order->recordedEvents() as $record) {
+  foreach ($order->pullEvents() as $record) {
       $outbox->append(record: $record);
   }
   ```
 
+* `peekEvents()`: returns a fresh copy of the buffer without clearing it, safe to iterate. The aggregate's own buffer is
+  not mutated by external iteration, and a later `pullEvents()` still drains every recorded event. Use it to inspect the
+  buffer, for example in tests, without consuming it.
+
+  ```php
+  $order->peekEvents();
+  ```
+
 #### Restoring aggregate version on reload
 
-* `reconstitute()`: static factory that state-based repositories invoke when rehydrating an
-  `EventualAggregateRoot` from persistence. The default implementation provided by
-  `EventualAggregateRootBehavior` instantiates the aggregate without invoking its constructor, assigns the
-  identity to the property declared by `identityProperty()`, hydrates the remaining state by reflection
-  from the `$state` map (entries with keys absent from the aggregate are silently ignored), and assigns
-  the aggregate version so subsequent events advance from the correct value. The buffer of recorded events
-  starts empty, the use-once contract still holds for any new operation.
+* `reconstituteStrict()`: the recommended static factory for repositories that rehydrate an
+  `EventualAggregateRoot` from a full persisted row. It delegates to `reconstitutePartial()` (honoring any
+  override), then verifies by reflection that hydration left no declared property uninitialized, throwing
+  `IncompleteAggregateState` when a required property is still unset. Properties that carry a default value,
+  and untyped properties, are always initialized by PHP, so they are never flagged.
+
+* `reconstitutePartial()`: the hydration step on its own, without the completeness check. The default
+  implementation provided by `EventualAggregateRootBehavior` instantiates the aggregate without invoking its
+  constructor, assigns the identity to the property declared by `identityProperty()`, hydrates the remaining
+  state by reflection from the `$aggregateState` map (entries with keys absent from the aggregate are silently
+  ignored), and assigns the aggregate version so subsequent events advance from the correct value. It throws
+  `MissingIdentityProperty` when the aggregate has no property named by `identityProperty()`. The buffer of
+  recorded events starts empty, so events emitted after reconstitution are drained with `pullEvents()` exactly as for a
+  freshly created aggregate.
 
   ```php
   <?php
@@ -395,18 +410,23 @@ fails by design with a duplicate-event error from the outbox.
 
   use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 
-  # Default path: the aggregate does not declare reconstitute(), the repository calls the
-  # trait default with the persisted identity, version, and state map.
-  $reservation = Reservation::reconstitute(
+  # Recommended path when a full row is rehydrated: the aggregate does not declare its own factory, so the
+  # repository calls the trait default with the persisted identity, state map, and version. The completeness
+  # check throws IncompleteAggregateState if hydration leaves any declared property uninitialized.
+  $reservation = Reservation::reconstituteStrict(
       identity: new ReservationId(value: 'res-1'),
-      aggregateVersion: AggregateVersion::of(value: 7),
-      state: ['status' => 'pending']
+      aggregateState: ['status' => 'pending'],
+      aggregateVersion: AggregateVersion::of(value: 7)
   );
   ```
 
-  Aggregates may override the factory to enforce a concrete identity type at the entry point. The static
-  signature cannot narrow the parameter type per LSP, so the override keeps `Identity` in the signature
-  and guards with `instanceof` inside:
+  Call `reconstitutePartial(...)` with the same arguments when the persisted state is intentionally partial and
+  the completeness check should be skipped.
+
+  Aggregates may override `reconstitutePartial()` to enforce a concrete identity type at the entry point.
+  `reconstituteStrict()` delegates to it, so the override is honored on both paths. The static signature cannot
+  narrow the parameter type per LSP, so the override keeps `Identity` in the signature and guards with
+  `instanceof` inside:
 
   ```php
   <?php
@@ -427,10 +447,10 @@ fails by design with a duplicate-event error from the outbox.
       {
       }
 
-      public static function reconstitute(
+      public static function reconstitutePartial(
           Identity $orderId,
-          AggregateVersion $aggregateVersion,
-          array $state = []
+          array $aggregateState,
+          AggregateVersion $aggregateVersion
       ): static {
           if (!$orderId instanceof OrderId) {
               $template = 'Expected identity of type <%s>, got <%s>.';
@@ -452,19 +472,21 @@ Every envelope carries `$id`, `$event`, `$revision`, `$eventType`, `$occurredAt`
 `$aggregateType`, and `$aggregateVersion`. The aggregate normally builds the record, so consumers
 read these fields off `EventRecord` directly without instantiating one.
 
-* `EventRecord::of()`: factory for the rare cases that require building an envelope outside the aggregate boundary,
+* `EventRecord::from()`: factory for the rare cases that require building an envelope outside the aggregate boundary,
   typically test code that fabricates envelopes as inputs to handlers, or consumer-side code deserializing payloads
-  from a wire format. The `id` and `occurredAt` parameters fall back to sensible defaults (`Uuid::uuid4()` and
-  `Instant::now()`) when omitted.
+  from a wire format. The constructor is private, so `from()` is the only construction path. The `id` and
+  `occurredAt` parameters fall back to sensible defaults (`Uuid::generateV7()` and `Utc::now()`) when omitted. The id
+  and
+  occurrence timestamp are the value objects `TinyBlocks\BuildingBlocks\Uuid` and `TinyBlocks\BuildingBlocks\Utc`.
 
-  | Parameter          | Type               | Required | Description                                                        |
-    |--------------------|--------------------|----------|--------------------------------------------------------------------|
-  | `id`               | `?UuidInterface`   | No       | Explicit envelope identifier; defaults to a fresh `Uuid::uuid4()`. |
-  | `event`            | `DomainEvent`      | Yes      | The event being recorded.                                          |
-  | `occurredAt`       | `?Instant`         | No       | Explicit occurrence timestamp; defaults to `Instant::now()`.       |
-  | `aggregateId`      | `Identity`         | Yes      | The aggregate identity that produced the event.                    |
-  | `aggregateType`    | `string`           | Yes      | The short class name of the aggregate.                             |
-  | `aggregateVersion` | `AggregateVersion` | Yes      | The aggregate version assigned to this envelope.                   |
+  | Parameter          | Type               | Required | Description                                                             |
+        |--------------------|--------------------|----------|-------------------------------------------------------------------------|
+  | `id`               | `?Uuid`            | No       | Explicit envelope identifier. Defaults to a fresh `Uuid::generateV7()`. |
+  | `event`            | `DomainEvent`      | Yes      | The event being recorded.                                               |
+  | `occurredAt`       | `?Utc`             | No       | Explicit occurrence timestamp. Defaults to `Utc::now()`.                |
+  | `aggregateId`      | `Identity`         | Yes      | The aggregate identity that produced the event.                         |
+  | `aggregateType`    | `string`           | Yes      | The short class name of the aggregate.                                  |
+  | `aggregateVersion` | `AggregateVersion` | Yes      | The aggregate version assigned to this envelope.                        |
 
   ```php
   <?php
@@ -474,7 +496,7 @@ read these fields off `EventRecord` directly without instantiating one.
   use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
   use TinyBlocks\BuildingBlocks\Event\EventRecord;
 
-  $record = EventRecord::of(
+  $record = EventRecord::from(
       event: new OrderPlaced(item: 'book'),
       aggregateId: new OrderId(value: 'ord-1'),
       aggregateType: 'Order',
@@ -493,7 +515,7 @@ Anti-Corruption Layer (Vernon, IDDD Chapter 3) between the internal model and th
 #### Declaring integration events
 
 * `IntegrationEvent`: marker interface for events that cross bounded-context boundaries. Carries
-  a `revision()` method that versions the public schema independently from the underlying domain
+  a `revision()` method that versions the public schema independently of the underlying domain
   event's schema.
 * `IntegrationEventBehavior`: default implementation that returns `Revision::initial()`. Use it
   on every integration event unless the public schema has been bumped.
@@ -520,7 +542,7 @@ is translated into the integration event `PaymentConfirmed`, not `PaymentConfirm
   }
   ```
 
-  Bumping the public schema revision independently from the underlying domain event:
+Bumping the public schema revision independently of the underlying domain event:
 
   ```php
   <?php
@@ -615,10 +637,10 @@ metadata from the originating `EventRecord`. The identifier is reused from the o
 record so that outbox relay retries remain idempotent. The revision and event type are derived
 from the integration event, not from the domain event.
 
-  | Parameter          | Type               | Description                                                                      |
-  |--------------------|--------------------|----------------------------------------------------------------------------------|
-  | `eventRecord`      | `EventRecord`      | Originating domain event record. Supplies transport metadata.                    |
-  | `integrationEvent` | `IntegrationEvent` | Integration event produced by the translator. Supplies payload and public schema. |
+| Parameter          | Type               | Description                                                                       |
+|--------------------|--------------------|-----------------------------------------------------------------------------------|
+| `eventRecord`      | `EventRecord`      | Originating domain event record. Supplies transport metadata.                     |
+| `integrationEvent` | `IntegrationEvent` | Integration event produced by the translator. Supplies payload and public schema. |
 
   ```php
   <?php
@@ -723,7 +745,7 @@ from the integration event, not from the domain event.
   skip earlier events. When a snapshot is provided, its aggregate version is authoritative.
 
   ```php
-  $cart = Cart::reconstitute(identity: new CartId(value: 'cart-1'), records: $records);
+  $cart = Cart::reconstitute(records: $records, identity: new CartId(value: 'cart-1'));
   ```
 
   ```php
@@ -732,8 +754,8 @@ from the integration event, not from the domain event.
   declare(strict_types=1);
 
   $cart = Cart::reconstitute(
-      identity: new CartId(value: 'cart-1'),
       records: $laterRecords,
+      identity: new CartId(value: 'cart-1'),
       snapshot: $snapshot
   );
   ```
@@ -903,7 +925,7 @@ Upcasters migrate serialized events across schema changes without touching the e
   use TinyBlocks\BuildingBlocks\Upcast\IntermediateEvent;
   use TinyBlocks\BuildingBlocks\Upcast\Upcasters;
 
-  $event = new IntermediateEvent(
+  $event = IntermediateEvent::from(
       type: EventType::fromString(value: 'ProductAdded'),
       revision: Revision::initial(),
       serializedEvent: ['productId' => 'prod-1']
@@ -947,7 +969,7 @@ minimal prevents infrastructure concerns from leaking into the domain model.
 
 Only the aggregate has the context needed to build the complete envelope: identity, aggregate version, aggregate
 type name. Storing raw events and wrapping them later would either duplicate that context or require a second
-pass. `push()` builds the full `EventRecord` immediately, and the outbox adapter reads them as-is with no
+pass. `pushEvent()` builds the full `EventRecord` immediately, and the outbox adapter reads them as-is with no
 translation.
 
 > Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns* (Addison-Wesley, 2003), "Envelope Wrapper".
@@ -963,7 +985,7 @@ and emits events as side effects, or persists only its events as the source of t
 
 ### 04. Why does `Revision` live on the `DomainEvent` instead of the call site?
 
-The revision of an event is a property of the event's schema. Keeping it on the event means the call site (`push`,
+The revision of an event is a property of the event's schema. Keeping it on the event means the call site (`pushEvent`,
 `when`) does not need to know the schema version, the event class is the single source of truth. Bumping a
 revision is always paired with a payload change (added field, removed field, renamed field), so creating a new
 event class to carry the new revision is the natural unit of work.
@@ -1004,15 +1026,16 @@ objects to prevent accidental comparisons across them at compile time.
 > Lock", source of `AggregateVersion` semantics.
 > Greg Young, *Versioning in an Event Sourced System* (Leanpub, 2017), source of `ModelVersion` semantics.
 
-### 08. Why is the `EventualAggregateRoot` use-once?
+### 08. How are recorded events drained from an `EventualAggregateRoot`?
 
-The recorded-events buffer is never cleared by the library. After the application service drains
-`recordedEvents()` into the outbox, the aggregate instance must be discarded. Re-saving the same instance pushes
-the same envelopes again and deterministically fails with a duplicate-event error from the outbox.
+After the aggregate state has been persisted, the application service calls `pullEvents()`, which returns the events
+recorded since the last drain and clears the buffer. Draining through `pullEvents()` publishes each event once: a
+second save of the same instance finds an empty buffer and re-emits nothing. `peekEvents()` is the non-destructive
+counterpart, returning a fresh copy for inspection (in tests, for example) while leaving the buffer intact.
 
-This is intentional. It surfaces re-save bugs at the database layer instead of hiding them via implicit state
-mutation. Applications that genuinely need to mutate the same logical aggregate twice in one process must reload
-from the repository between operations.
+An instance models a single transactional unit of work. Reload from the repository before operating on the same
+logical aggregate again rather than reusing a drained instance, so its aggregate version and state reflect what
+storage holds.
 
 > Eric Evans, *Domain-Driven Design* (Addison-Wesley, 2003), Chapter 6, "Aggregates" (single transactional unit
 > per aggregate per request).
@@ -1043,16 +1066,19 @@ code has a single source of truth to branch on when older shapes show up in stor
 > Lock".
 > Greg Young, *Versioning in an Event Sourced System* (Leanpub, 2017).
 
-### 11. Why is `reconstitute()` static on the interface even though PHP's polymorphism for static methods is limited?
+### 11. Why are `reconstitutePartial()` and
 
-The interface declaration documents the contract: every `EventualAggregateRoot` exposes a static factory with the
-shape `(Identity, AggregateVersion, array): static` that repositories can call. PHP does not dispatch static calls
-through interfaces at runtime, so the consumer always names the concrete class (`Order::reconstitute(...)`,
-`Reservation::reconstitute(...)`). The interface still earns its keep: it forces aggregates to expose the factory,
-the trait default provides one for free, and overrides remain bound to the declared signature. The parameter name
-is free per LSP, so an override can rename `$identity` to `$orderId` for readability, but the type must remain
-`Identity` — narrowing to a concrete identity class would break LSP. Concrete types are enforced inside the
-override with `instanceof`.
+`reconstituteStrict()` static on the interface even though PHP's polymorphism for static methods is limited?
+
+The interface declaration documents the contract: every `EventualAggregateRoot` exposes two static factories with
+the shape `(Identity, array, AggregateVersion): static` that repositories can call. PHP does not dispatch static
+calls through interfaces at runtime, so the consumer always names the concrete class
+(`Order::reconstituteStrict(...)`, `Reservation::reconstitutePartial(...)`). The interface still earns its keep: it
+forces aggregates to expose the factories, the trait default provides both for free (`reconstituteStrict` delegates
+to `reconstitutePartial`), and overrides remain bound to the declared signature. The parameter name is free per
+LSP, so an override of `reconstitutePartial` can rename `$identity` to `$orderId` for readability, but the type
+must remain `Identity`, narrowing to a concrete identity class would break LSP. Concrete types are enforced inside
+the override with `instanceof`.
 
 > Barbara Liskov and Jeannette Wing, *A Behavioral Notion of Subtyping* (ACM TOPLAS, 1994).
 

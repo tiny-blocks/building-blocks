@@ -46,13 +46,13 @@ interface EventSourcingRoot extends AggregateRoot
      * aggregate version is taken as authoritative. Only events recorded after the snapshot need to be
      * replayed.</p>
      *
-     * @param Identity $identity The identity of the aggregate.
      * @param iterable<EventRecord> $records The event stream to replay, ordered by aggregate version.
+     * @param Identity $identity The identity of the aggregate.
      * @param Snapshot|null $snapshot Optional snapshot to restore from before replay.
      * @return static The reconstituted aggregate.
      * @throws MissingIdentityProperty If the property referenced by <code>identityProperty()</code> does not exist.
      */
-    public static function reconstitute(Identity $identity, iterable $records, ?Snapshot $snapshot = null): static;
+    public static function reconstitute(iterable $records, Identity $identity, ?Snapshot $snapshot = null): static;
 
     /**
      * Returns the aggregate state to persist in a snapshot.
@@ -90,9 +90,23 @@ interface EventSourcingRoot extends AggregateRoot
     public function eventHandlers(): array;
 
     /**
-     * Returns the events recorded during the current unit of work.
+     * Returns a fresh copy of the recorded events without clearing the buffer.
      *
-     * @return EventRecords The events awaiting append to the event store.
+     * <p>A non-destructive read. The returned collection is a copy, so external mutation does not leak
+     * into the aggregate's internal buffer, and the buffer is left intact for a later {@see pullEvents()} to
+     * drain.</p>
+     *
+     * @return EventRecords A copy of the recorded events, safe to iterate and mutate.
      */
-    public function recordedEvents(): EventRecords;
+    public function peekEvents(): EventRecords;
+
+    /**
+     * Returns the recorded events and clears the internal buffer.
+     *
+     * <p>Drains the buffer in a single step: the returned collection holds every event recorded since the
+     * last drain, and a subsequent call returns an empty collection until new events are recorded.</p>
+     *
+     * @return EventRecords The events recorded since the last drain.
+     */
+    public function pullEvents(): EventRecords;
 }

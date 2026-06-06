@@ -25,6 +25,21 @@ parameters:
             identifier: argument.type
             path: src/Upcast/SingleUpcasterBehavior.php
 
+        # Constructor parameter $propertyNames cannot carry PHPDoc per code-style rule;
+        # the implode() argument-type error is the downstream symptom of that constraint.
+        -
+            identifier: missingType.iterableValue
+            path: src/Exceptions/IncompleteAggregateState.php
+        -
+            identifier: argument.type
+            path: src/Exceptions/IncompleteAggregateState.php
+
+        # ReflectionClass requires class-string|object; ClassName::shortName accepts the wider
+        # object|string so call sites can pass static::class. The narrowing is safe at every call.
+        -
+            identifier: argument.type
+            path: src/Internal/ClassName.php
+
         # tests/ — PHPDoc and @var are prohibited inside tests/, so PHPStan errors
         # for typed arrays in fixtures and helpers route through ignoreErrors.
         -
@@ -38,7 +53,4 @@ parameters:
             path: tests/Models/*
         -
             identifier: property.nonObject
-            path: tests/Unit/*
-        -
-            identifier: method.nonObject
             path: tests/Unit/*

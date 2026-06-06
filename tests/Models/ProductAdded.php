@@ -14,4 +14,9 @@ final readonly class ProductAdded implements DomainEvent
     public function __construct(public string $productId)
     {
     }
+
+    public function eventType(): string
+    {
+        return 'ProductAdded';
+    }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Test\TinyBlocks\BuildingBlocks\Unit\Event;
 
 use PHPUnit\Framework\TestCase;
-use Ramsey\Uuid\Uuid;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderPlaced;
 use Test\TinyBlocks\BuildingBlocks\Models\PaymentConfirmed;
@@ -13,26 +12,27 @@ use Test\TinyBlocks\BuildingBlocks\Models\PaymentConfirmedV2;
 use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\IntegrationEventRecord;
-use TinyBlocks\Time\Instant;
+use TinyBlocks\BuildingBlocks\Utc;
+use TinyBlocks\BuildingBlocks\Uuid;
 
 final class IntegrationEventRecordTest extends TestCase
 {
     public function testFromReusesOriginatingRecordMetadataAndCarriesIntegrationEvent(): void
     {
         /** @Given an explicit event identifier */
-        $id = Uuid::uuid4();
+        $id = Uuid::generateV7();
 
         /** @And an aggregate identity */
         $orderId = new OrderId(value: 'ord-1');
 
         /** @And an explicit occurrence timestamp */
-        $occurredAt = Instant::now();
+        $occurredAt = Utc::now();
 
         /** @And the first aggregate version */
         $aggregateVersion = AggregateVersion::first();
 
         /** @And an event record built with explicit metadata */
-        $eventRecord = EventRecord::of(
+        $eventRecord = EventRecord::from(
             event: new OrderPlaced(item: 'book'),
             aggregateId: $orderId,
             aggregateType: 'Order',
@@ -67,7 +67,7 @@ final class IntegrationEventRecordTest extends TestCase
         $domainEvent = new OrderPlaced(item: 'notebook');
 
         /** @And an event record wrapping the domain event */
-        $eventRecord = EventRecord::of(
+        $eventRecord = EventRecord::from(
             event: $domainEvent,
             aggregateId: new OrderId(value: 'ord-2'),
             aggregateType: 'Order',
@@ -90,7 +90,7 @@ final class IntegrationEventRecordTest extends TestCase
     public function testFromDerivesEventTypeFromIntegrationEventClassName(): void
     {
         /** @Given an event record wrapping an OrderPlaced domain event */
-        $eventRecord = EventRecord::of(
+        $eventRecord = EventRecord::from(
             event: new OrderPlaced(item: 'pen'),
             aggregateId: new OrderId(value: 'ord-3'),
             aggregateType: 'Order',

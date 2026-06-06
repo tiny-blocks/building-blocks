@@ -14,4 +14,9 @@ final readonly class OrderPlaced implements DomainEvent
     public function __construct(public string $item)
     {
     }
+
+    public function eventType(): string
+    {
+        return 'OrderPlaced';
+    }
 }
