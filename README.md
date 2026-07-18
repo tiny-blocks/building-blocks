@@ -41,15 +41,15 @@
 ## Overview
 
 The `Building Blocks` library provides the tactical design building blocks of Domain-Driven Design: `Entity`,
-`Identity`, `AggregateRoot`, and the infrastructure required to carry domain events through a transactional outbox
-or an event-sourced store.
+`Identity`, `AggregateRoot`, and the infrastructure required to carry domain events through a transactional outbox or an
+event-sourced store.
 
 This library implements the tactical patterns from Evans (Entity, Identity, Aggregate Root, Value Object) and Vernon
-(Domain Event) together with pragmatic extensions that production code needs but the original DDD literature does
-not address: aggregate versioning for optimistic offline locking (Fowler PEAA), model versioning and rolling
-snapshots for event-sourced aggregates (Greg Young), event upcasting for schema evolution (Greg Young), and an
-event envelope decoupling domain events from infrastructure metadata (Hohpe/Woolf EIP). Every extension is annotated
-in its own PHPDoc with its source.
+(Domain Event) together with pragmatic extensions that production code needs but the original DDD literature does not
+address: aggregate versioning for optimistic offline locking (Fowler PEAA), model versioning and rolling snapshots for
+event-sourced aggregates (Greg Young), event upcasting for schema evolution (Greg Young), and an event envelope
+decoupling domain events from infrastructure metadata (Hohpe/Woolf EIP). Every extension is annotated in its own PHPDoc
+with its source.
 
 Domain events defined here are plain PHP objects fully compatible with any PSR-14 dispatcher. The library does not
 replace PSR-14, it defines what flows through it. Serialization to wire formats is delegated to adapters such as
@@ -66,8 +66,7 @@ composer require tiny-blocks/building-blocks
 The library exposes three styles of aggregate modeling through sibling interfaces:
 
 * `AggregateRoot` for plain DDD modeling without events.
-* `EventualAggregateRoot` for aggregates that persist state and emit events as side effects via a transactional
-  outbox.
+* `EventualAggregateRoot` for aggregates that persist state and emit events as side effects via a transactional outbox.
 * `EventSourcingRoot` for aggregates whose state is derived entirely from their ordered event stream.
 
 ### Entity
@@ -102,8 +101,8 @@ differently named property override `identityProperty()`.
 
 #### Compound identity
 
-* `CompoundIdentity`: identity composed of multiple fields treated as a tuple. Fields may carry any
-  type the application requires, including primitive scalars (`int`, `string`) and value objects.
+* `CompoundIdentity`: identity composed of multiple fields treated as a tuple. Fields may carry any type the application
+  requires, including primitive scalars (`int`, `string`) and value objects.
 
   ```php
   <?php
@@ -130,8 +129,8 @@ differently named property override `identityProperty()`.
 
 #### Identity access on entities
 
-* `identity()`, `identityValue()`, `sameIdentityOf()`, `identityEquals()`: provided by `EntityBehavior` for any
-  entity that declares its identity property.
+* `identity()`, `identityValue()`, `sameIdentityOf()`, `identityEquals()`: provided by `EntityBehavior` for any entity
+  that declares its identity property.
 
   ```php
   <?php
@@ -181,12 +180,12 @@ differently named property override `identityProperty()`.
 
 ### Aggregate
 
-`AggregateRoot` adds two pragmatic fields to Evans' aggregate: a monotonic `AggregateVersion` for optimistic
-concurrency control, and a `ModelVersion` for schema evolution of the aggregate type.
+`AggregateRoot` adds two pragmatic fields to Evans' aggregate: a monotonic `AggregateVersion` for optimistic concurrency
+control, and a `ModelVersion` for schema evolution of the aggregate type.
 
-* `aggregateVersion()`: the current aggregate version, starting at zero for a blank aggregate and advancing by one
-  for every recorded event. `AggregateVersion::isAfter()` and `AggregateVersion::isBefore()` compare two
-  versions when reasoning about replay progress or concurrency conflicts.
+* `aggregateVersion()`: the current aggregate version, starting at zero for a blank aggregate and advancing by one for
+  every recorded event. `AggregateVersion::isAfter()` and `AggregateVersion::isBefore()` compare two versions when
+  reasoning about replay progress or concurrency conflicts.
 
   ```php
   $user->aggregateVersion();
@@ -206,9 +205,9 @@ concurrency control, and a `ModelVersion` for schema evolution of the aggregate 
   $previous->isBefore(other: $current);  # true
   ```
 
-* `modelVersion()`: typed as `ModelVersion`. Defaults to `ModelVersion::initial()` (value `0`). Override on
-  aggregates that have a versioned schema. `ModelVersion::isAfter()` and `ModelVersion::isBefore()` compare two
-  schema versions during migration logic.
+* `modelVersion()`: typed as `ModelVersion`. Defaults to `ModelVersion::initial()` (value `0`). Override on aggregates
+  that have a versioned schema. `ModelVersion::isAfter()` and `ModelVersion::isBefore()` compare two schema versions
+  during migration logic.
 
   ```php
   <?php
@@ -252,21 +251,26 @@ concurrency control, and a `ModelVersion` for schema evolution of the aggregate 
   $user->aggregateType();
   ```
 
+Both infrastructure fields the trait carries, `recordedEvents` and `aggregateVersion`, are marked `#[Transient]`, so a
+mapper that serializes aggregate state leaves them out of the portable form with no per-call configuration. A
+state-based repository then persists only the domain state, while the recorded events are drained to the outbox and the
+version are tracked by the concurrency guard.
+
 ### Domain events with transactional outbox
 
-`EventualAggregateRoot` records domain events during the unit of work. State is the source of truth, events are
-emitted as side effects and must be delivered at-least-once.
+`EventualAggregateRoot` records domain events during the unit of work. State is the source of truth, events are emitted
+as side effects and must be delivered at-least-once.
 
 After persisting the aggregate state, the application service drains the recorded events with `pullEvents()`, which
-returns them and clears the buffer, so a second save of the same instance does not re-emit the events already
-drained. `peekEvents()` returns a non-destructive copy for inspection without touching the buffer. An instance models a
-single unit of work: reload from the repository before operating on the same logical aggregate again rather than
-reusing a drained instance.
+returns them and clears the buffer, so a second save of the same instance does not re-emit the events already drained.
+`peekEvents()` returns a non-destructive copy for inspection without touching the buffer. An instance models a single
+unit of work: reload from the repository before operating on the same logical aggregate again rather than reusing a
+drained instance.
 
 #### Declaring events
 
-* `DomainEvent`: contract for a fact that happened in the domain. The only required method is `revision()`,
-  defaulted to `Revision::initial()` by `DomainEventBehavior`. Override only when bumping the event schema.
+* `DomainEvent`: contract for a fact that happened in the domain. The only required method is `revision()`, defaulted to
+  `Revision::initial()` by `DomainEventBehavior`. Override only when bumping the event schema.
 
   ```php
   <?php
@@ -363,8 +367,8 @@ reusing a drained instance.
 #### Draining events
 
 * `pullEvents()`: drains the buffer. Returns the events recorded since the last drain and clears the buffer, so a
-  subsequent call returns an empty collection until new events are recorded. This is the persistence path: drain
-  into the outbox after the aggregate state has been saved.
+  subsequent call returns an empty collection until new events are recorded. This is the persistence path: drain into
+  the outbox after the aggregate state has been saved.
 
   ```php
   <?php
@@ -389,19 +393,19 @@ reusing a drained instance.
 #### Restoring aggregate version on reload
 
 * `reconstituteStrict()`: the recommended static factory for repositories that rehydrate an
-  `EventualAggregateRoot` from a full persisted row. It delegates to `reconstitutePartial()` (honoring any
-  override), then verifies by reflection that hydration left no declared property uninitialized, throwing
-  `IncompleteAggregateState` when a required property is still unset. Properties that carry a default value,
-  and untyped properties, are always initialized by PHP, so they are never flagged.
+  `EventualAggregateRoot` from a full persisted row. It delegates to `reconstitutePartial()` (honoring any override),
+  then verifies by reflection that hydration left no declared property uninitialized, throwing
+  `IncompleteAggregateState` when a required property is still unset. Properties that carry a default value, and untyped
+  properties, are always initialized by PHP, so they are never flagged.
 
-* `reconstitutePartial()`: the hydration step on its own, without the completeness check. The default
-  implementation provided by `EventualAggregateRootBehavior` instantiates the aggregate without invoking its
-  constructor, assigns the identity to the property declared by `identityProperty()`, hydrates the remaining
-  state by reflection from the `$aggregateState` map (entries with keys absent from the aggregate are silently
-  ignored), and assigns the aggregate version so subsequent events advance from the correct value. It throws
-  `MissingIdentityProperty` when the aggregate has no property named by `identityProperty()`. The buffer of
-  recorded events starts empty, so events emitted after reconstitution are drained with `pullEvents()` exactly as for a
-  freshly created aggregate.
+* `reconstitutePartial()`: the hydration step on its own, without the completeness check. The default implementation
+  provided by `EventualAggregateRootBehavior` instantiates the aggregate without invoking its constructor, assigns the
+  identity to the property declared by `identityProperty()`, hydrates the remaining state by reflection from the
+  `$aggregateState` map (entries with keys absent from the aggregate are silently ignored), and assigns the aggregate
+  version so subsequent events advance from the correct value. It throws
+  `MissingIdentityProperty` when the aggregate has no property named by `identityProperty()`. The buffer of recorded
+  events starts empty, so events emitted after reconstitution are drained with `pullEvents()` exactly as for a freshly
+  created aggregate.
 
   ```php
   <?php
@@ -420,12 +424,12 @@ reusing a drained instance.
   );
   ```
 
-  Call `reconstitutePartial(...)` with the same arguments when the persisted state is intentionally partial and
-  the completeness check should be skipped.
+  Call `reconstitutePartial(...)` with the same arguments when the persisted state is intentionally partial and the
+  completeness check should be skipped.
 
   Aggregates may override `reconstitutePartial()` to enforce a concrete identity type at the entry point.
-  `reconstituteStrict()` delegates to it, so the override is honored on both paths. The static signature cannot
-  narrow the parameter type per LSP, so the override keeps `Identity` in the signature and guards with
+  `reconstituteStrict()` delegates to it, so the override is honored on both paths. The static signature cannot narrow
+  the parameter type per LSP, so the override keeps `Identity` in the signature and guards with
   `instanceof` inside:
 
   ```php
@@ -469,18 +473,17 @@ reusing a drained instance.
 #### Constructing event records directly
 
 Every envelope carries `$id`, `$event`, `$revision`, `$eventType`, `$occurredAt`, `$aggregateId`,
-`$aggregateType`, and `$aggregateVersion`. The aggregate normally builds the record, so consumers
-read these fields off `EventRecord` directly without instantiating one.
+`$aggregateType`, and `$aggregateVersion`. The aggregate normally builds the record, so consumers read these fields off
+`EventRecord` directly without instantiating one.
 
 * `EventRecord::from()`: factory for the rare cases that require building an envelope outside the aggregate boundary,
-  typically test code that fabricates envelopes as inputs to handlers, or consumer-side code deserializing payloads
-  from a wire format. The constructor is private, so `from()` is the only construction path. The `id` and
+  typically test code that fabricates envelopes as inputs to handlers, or consumer-side code deserializing payloads from
+  a wire format. The constructor is private, so `from()` is the only construction path. The `id` and
   `occurredAt` parameters fall back to sensible defaults (`Uuid::generateV7()` and `Utc::now()`) when omitted. The id
-  and
-  occurrence timestamp are the value objects `TinyBlocks\BuildingBlocks\Uuid` and `TinyBlocks\BuildingBlocks\Utc`.
+  and occurrence timestamp are the value objects `TinyBlocks\BuildingBlocks\Uuid` and `TinyBlocks\BuildingBlocks\Utc`.
 
   | Parameter          | Type               | Required | Description                                                             |
-        |--------------------|--------------------|----------|-------------------------------------------------------------------------|
+            |--------------------|--------------------|----------|-------------------------------------------------------------------------|
   | `id`               | `?Uuid`            | No       | Explicit envelope identifier. Defaults to a fresh `Uuid::generateV7()`. |
   | `event`            | `DomainEvent`      | Yes      | The event being recorded.                                               |
   | `occurredAt`       | `?Utc`             | No       | Explicit occurrence timestamp. Defaults to `Utc::now()`.                |
@@ -506,22 +509,21 @@ read these fields off `EventRecord` directly without instantiating one.
 
 ### Integration events and the Anti-Corruption Layer
 
-`DomainEvent` describes facts that happened inside the bounded context and evolves freely with the
-internal model. `IntegrationEvent` describes the stable public contract that flows to external
-consumers and must remain backward-compatible. The two interfaces are siblings, not parent and
-child. An `IntegrationEvent` is produced by an `IntegrationEventTranslator`, which acts as the
-Anti-Corruption Layer (Vernon, IDDD Chapter 3) between the internal model and the public contract.
+`DomainEvent` describes facts that happened inside the bounded context and evolves freely with the internal model.
+`IntegrationEvent` describes the stable public contract that flows to external consumers and must remain
+backward-compatible. The two interfaces are siblings, not parent and child. An `IntegrationEvent` is produced by an
+`IntegrationEventTranslator`, which acts as the Anti-Corruption Layer (Vernon, IDDD Chapter 3) between the internal
+model and the public contract.
 
 #### Declaring integration events
 
-* `IntegrationEvent`: marker interface for events that cross bounded-context boundaries. Carries
-  a `revision()` method that versions the public schema independently of the underlying domain
-  event's schema.
-* `IntegrationEventBehavior`: default implementation that returns `Revision::initial()`. Use it
-  on every integration event unless the public schema has been bumped.
+* `IntegrationEvent`: marker interface for events that cross bounded-context boundaries. Carries a `revision()` method
+  that versions the public schema independently of the underlying domain event's schema.
+* `IntegrationEventBehavior`: default implementation that returns `Revision::initial()`. Use it on every integration
+  event unless the public schema has been bumped.
 
-Class names for integration events must follow the bounded-context ubiquitous language and must
-**not** carry a technical suffix such as `IntegrationEvent`. The domain event `TransactionConfirmed`
+Class names for integration events must follow the bounded-context ubiquitous language and must **not** carry a
+technical suffix such as `IntegrationEvent`. The domain event `TransactionConfirmed`
 is translated into the integration event `PaymentConfirmed`, not `PaymentConfirmedIntegrationEvent`.
 
   ```php
@@ -573,10 +575,9 @@ Bumping the public schema revision independently of the underlying domain event:
 
 #### Writing a translator
 
-`IntegrationEventTranslator` is the Anti-Corruption Layer seam. Each implementation declares
-which `EventRecord` it handles via `supports()` and produces the corresponding
-`IntegrationEvent` via `translate()`. Implementations must be pure functions with no side
-effects or I/O.
+`IntegrationEventTranslator` is the Anti-Corruption Layer seam. Each implementation declares which `EventRecord` it
+handles via `supports()` and produces the corresponding
+`IntegrationEvent` via `translate()`. Implementations must be pure functions with no side effects or I/O.
 
   ```php
   <?php
@@ -606,10 +607,9 @@ effects or I/O.
 
 #### Registering translators
 
-`IntegrationEventTranslators` is an ordered collection of translators. `findFor()` returns the
-first translator whose `supports()` returns `true` for a given record, or `null` when no
-translator handles it. A `null` result is the canonical signal that the event is purely internal
-and must not cross the bounded-context boundary.
+`IntegrationEventTranslators` is an ordered collection of translators. `findFor()` returns the first translator whose
+`supports()` returns `true` for a given record, or `null` when no translator handles it. A `null` result is the
+canonical signal that the event is purely internal and must not cross the bounded-context boundary.
 
   ```php
   <?php
@@ -632,10 +632,9 @@ and must not cross the bounded-context boundary.
 
 #### Constructing integration event records directly
 
-`IntegrationEventRecord::from()` envelopes a translated integration event with the transport
-metadata from the originating `EventRecord`. The identifier is reused from the originating
-record so that outbox relay retries remain idempotent. The revision and event type are derived
-from the integration event, not from the domain event.
+`IntegrationEventRecord::from()` envelopes a translated integration event with the transport metadata from the
+originating `EventRecord`. The identifier is reused from the originating record so that outbox relay retries remain
+idempotent. The revision and event type are derived from the integration event, not from the domain event.
 
 | Parameter          | Type               | Description                                                                       |
 |--------------------|--------------------|-----------------------------------------------------------------------------------|
@@ -697,9 +696,9 @@ from the integration event, not from the domain event.
   }
   ```
 
-* `eventHandlers()`: explicit registration. Returns a map of `class-string<DomainEvent>` to callable. When the map
-  is non-empty, the trait dispatches through it instead of using the implicit `when<X>` convention. Use this when
-  handler names should not follow the convention or when static analysis on dispatch is desired.
+* `eventHandlers()`: explicit registration. Returns a map of `class-string<DomainEvent>` to callable. When the map is
+  non-empty, the trait dispatches through it instead of using the implicit `when<X>` convention. Use this when handler
+  names should not follow the convention or when static analysis on dispatch is desired.
 
   ```php
   <?php
@@ -732,8 +731,8 @@ from the integration event, not from the domain event.
 
 #### Creating a blank aggregate
 
-* `blank()`: factory that instantiates the aggregate via reflection without invoking its constructor. All state
-  must come from events or from a snapshot.
+* `blank()`: factory that instantiates the aggregate via reflection without invoking its constructor. All state must
+  come from events or from a snapshot.
 
   ```php
   $cart = Cart::blank(identity: new CartId(value: 'cart-1'));
@@ -741,8 +740,8 @@ from the integration event, not from the domain event.
 
 #### Replaying an event stream
 
-* `reconstitute()`: replays an ordered stream of `EventRecord` instances, optionally starting from a snapshot to
-  skip earlier events. When a snapshot is provided, its aggregate version is authoritative.
+* `reconstitute()`: replays an ordered stream of `EventRecord` instances, optionally starting from a snapshot to skip
+  earlier events. When a snapshot is provided, its aggregate version is authoritative.
 
   ```php
   $cart = Cart::reconstitute(records: $records, identity: new CartId(value: 'cart-1'));
@@ -768,8 +767,8 @@ replaying the entire history.
 
 #### Capturing aggregate state
 
-Aggregates control what fields enter the snapshot by overriding `snapshotState()`. The default captures every
-declared property except `recordedEvents` and `aggregateVersion` (which are tracked separately on the envelope).
+Aggregates control what fields enter the snapshot by overriding `snapshotState()`. The default captures every declared
+property except `recordedEvents` and `aggregateVersion` (which are tracked separately on the envelope).
 
   ```php
   <?php
@@ -882,8 +881,8 @@ Upcasters migrate serialized events across schema changes without touching the e
 
 #### Defining an upcaster
 
-* `Upcaster`: transforms one `(type, revision)` pair forward by one step. Returns the event unchanged when the
-  type or revision does not match.
+* `Upcaster`: transforms one `(type, revision)` pair forward by one step. Returns the event unchanged when the type or
+  revision does not match.
 * `SingleUpcasterBehavior`: binds the upcaster to a specific migration via three class constants and delegates the
   payload transformation to an abstract `doUpcast()` method.
 
@@ -941,8 +940,8 @@ Upcasters migrate serialized events across schema changes without touching the e
 
 #### Default values for new fields
 
-* `DefaultValues::get()`: type-to-default-value map for common primitive types, used when an upcast introduces a
-  new field with a sensible zero-value default.
+* `DefaultValues::get()`: type-to-default-value map for common primitive types, used when an upcast introduces a new
+  field with a sensible zero-value default.
 
   ```php
   <?php
@@ -958,26 +957,25 @@ Upcasters migrate serialized events across schema changes without touching the e
 
 ### 01. Why is `DomainEvent` close to a marker interface?
 
-A domain event is a fact about something that happened in the domain. The contract carries only `revision()` so
-the library can route schema migrations through upcasters. Everything else (aggregate identity, aggregate version,
-aggregate type, occurrence timestamp) is envelope metadata that belongs to `EventRecord`. Keeping the event itself
-minimal prevents infrastructure concerns from leaking into the domain model.
+A domain event is a fact about something that happened in the domain. The contract carries only `revision()` so the
+library can route schema migrations through upcasters. Everything else (aggregate identity, aggregate version, aggregate
+type, occurrence timestamp) is envelope metadata that belongs to `EventRecord`. Keeping the event itself minimal
+prevents infrastructure concerns from leaking into the domain model.
 
 > Vaughn Vernon, *Implementing Domain-Driven Design* (Addison-Wesley, 2013), Chapter 8, "Domain Events".
 
 ### 02. Why does `EventualAggregateRoot` store `EventRecord` instead of `DomainEvent`?
 
-Only the aggregate has the context needed to build the complete envelope: identity, aggregate version, aggregate
-type name. Storing raw events and wrapping them later would either duplicate that context or require a second
-pass. `pushEvent()` builds the full `EventRecord` immediately, and the outbox adapter reads them as-is with no
-translation.
+Only the aggregate has the context needed to build the complete envelope: identity, aggregate version, aggregate type
+name. Storing raw events and wrapping them later would either duplicate that context or require a second pass.
+`pushEvent()` builds the full `EventRecord` immediately, and the outbox adapter reads them as-is with no translation.
 
 > Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns* (Addison-Wesley, 2003), "Envelope Wrapper".
 
 ### 03. Why are `EventualAggregateRoot` and `EventSourcingRoot` siblings instead of a hierarchy?
 
-Outbox and event sourcing are mutually exclusive persistence strategies. An aggregate either persists its state
-and emits events as side effects, or persists only its events as the source of truth. A common base beyond
+Outbox and event sourcing are mutually exclusive persistence strategies. An aggregate either persists its state and
+emits events as side effects, or persists only its events as the source of truth. A common base beyond
 `AggregateRoot` would imply the two patterns can coexist on the same aggregate, which they cannot.
 
 > Martin Fowler, *Event Sourcing* (martinfowler.com, 2005).
@@ -986,41 +984,41 @@ and emits events as side effects, or persists only its events as the source of t
 ### 04. Why does `Revision` live on the `DomainEvent` instead of the call site?
 
 The revision of an event is a property of the event's schema. Keeping it on the event means the call site (`pushEvent`,
-`when`) does not need to know the schema version, the event class is the single source of truth. Bumping a
-revision is always paired with a payload change (added field, removed field, renamed field), so creating a new
-event class to carry the new revision is the natural unit of work.
+`when`) does not need to know the schema version, the event class is the single source of truth. Bumping a revision is
+always paired with a payload change (added field, removed field, renamed field), so creating a new event class to carry
+the new revision is the natural unit of work.
 
 > Greg Young, *Versioning in an Event Sourced System* (Leanpub, 2017).
 
 ### 05. Why does `blank()` skip the constructor?
 
-`EventSourcingRootBehavior::blank()` instantiates the aggregate via reflection without invoking its constructor
-because all aggregate state in an event-sourced model must come from events or from a snapshot. Any invariants
-established by the constructor would contradict that principle. Concrete aggregates should treat their constructor
-as private and reserved for internal use during command handling.
+`EventSourcingRootBehavior::blank()` instantiates the aggregate via reflection without invoking its constructor because
+all aggregate state in an event-sourced model must come from events or from a snapshot. Any invariants established by
+the constructor would contradict that principle. Concrete aggregates should treat their constructor as private and
+reserved for internal use during command handling.
 
 > Greg Young, *CQRS Documents* (2010), "Event Sourcing" section.
 
 ### 06. Why doesn't the library serialize envelopes to JSON or any other wire format?
 
-Serialization is an infrastructure concern. Putting encoding methods on domain value objects mixes that concern
-into the domain layer, which contradicts the library's persistence-agnostic stance. Adapters such as
-`tiny-blocks/outbox` provide dedicated serializer ports. The domain layer exposes `EventRecord`, `Snapshot`, and
-the value objects as pure data, downstream adapters decide how to map them onto bytes.
+Serialization is an infrastructure concern. Putting encoding methods on domain value objects mixes that concern into the
+domain layer, which contradicts the library's persistence-agnostic stance. Adapters such as
+`tiny-blocks/outbox` provide dedicated serializer ports. The domain layer exposes `EventRecord`, `Snapshot`, and the
+value objects as pure data, downstream adapters decide how to map them onto bytes.
 
 > Alistair Cockburn, *Hexagonal Architecture* (alistair.cockburn.us, 2005).
 
 ### 07. What is the difference between `ModelVersion` and `AggregateVersion`?
 
-`AggregateVersion` counts events per aggregate instance. It is the basis for optimistic concurrency control: a
-save fails if the aggregate version in storage differs from the in-memory version the aggregate believed it had.
+`AggregateVersion` counts events per aggregate instance. It is the basis for optimistic concurrency control: a save
+fails if the aggregate version in storage differs from the in-memory version the aggregate believed it had.
 
-`ModelVersion` versions the aggregate type itself. When the aggregate schema changes in a backwards-incompatible
-way (a property is removed, renamed, or its semantics shift), bumping the model version gives migration code a
-single source of truth to branch on.
+`ModelVersion` versions the aggregate type itself. When the aggregate schema changes in a backwards-incompatible way (a
+property is removed, renamed, or its semantics shift), bumping the model version gives migration code a single source of
+truth to branch on.
 
-The two are different concepts that happen to share an integer representation. They are typed as separate value
-objects to prevent accidental comparisons across them at compile time.
+The two are different concepts that happen to share an integer representation. They are typed as separate value objects
+to prevent accidental comparisons across them at compile time.
 
 > Martin Fowler, *Patterns of Enterprise Application Architecture* (Addison-Wesley, 2002), "Optimistic Offline
 > Lock", source of `AggregateVersion` semantics.
@@ -1029,13 +1027,12 @@ objects to prevent accidental comparisons across them at compile time.
 ### 08. How are recorded events drained from an `EventualAggregateRoot`?
 
 After the aggregate state has been persisted, the application service calls `pullEvents()`, which returns the events
-recorded since the last drain and clears the buffer. Draining through `pullEvents()` publishes each event once: a
-second save of the same instance finds an empty buffer and re-emits nothing. `peekEvents()` is the non-destructive
-counterpart, returning a fresh copy for inspection (in tests, for example) while leaving the buffer intact.
+recorded since the last drain and clears the buffer. Draining through `pullEvents()` publishes each event once: a second
+save of the same instance finds an empty buffer and re-emits nothing. `peekEvents()` is the non-destructive counterpart,
+returning a fresh copy for inspection (in tests, for example) while leaving the buffer intact.
 
-An instance models a single transactional unit of work. Reload from the repository before operating on the same
-logical aggregate again rather than reusing a drained instance, so its aggregate version and state reflect what
-storage holds.
+An instance models a single transactional unit of work. Reload from the repository before operating on the same logical
+aggregate again rather than reusing a drained instance, so its aggregate version and state reflect what storage holds.
 
 > Eric Evans, *Domain-Driven Design* (Addison-Wesley, 2003), Chapter 6, "Aggregates" (single transactional unit
 > per aggregate per request).
@@ -1047,20 +1044,20 @@ No. These three concerns live elsewhere:
 * Identity and aggregate type are envelope metadata. They are added by the aggregate when it builds the
   `EventRecord` (see `AggregateRootBehavior::buildEventRecord`) and are accessed on the consumer side through the
   envelope, not the event.
-* Serialization is an infrastructure concern. The event remains a pure PHP object, serialization happens in the
-  outbox writer and the consumer deserializer, both of which live downstream of the library.
+* Serialization is an infrastructure concern. The event remains a pure PHP object, serialization happens in the outbox
+  writer and the consumer deserializer, both of which live downstream of the library.
 
 A `DomainEvent` that grows methods like these duplicates envelope data already on the `EventRecord` and pulls
 infrastructure into the domain layer.
 
 ### 10. Why does the library include `AggregateVersion` and `ModelVersion` if Evans never mentioned them?
 
-Evans defined the tactical patterns of DDD, but optimistic concurrency control and aggregate schema evolution
-are concerns that emerged later in mainstream production code. `AggregateVersion` carries the optimistic offline
-lock formalized by Fowler in PEAA: the value travels with the aggregate, the persistence adapter compares the
-in-memory value against the stored one, and a mismatch raises a concurrency exception instead of overwriting
-another process's change. `ModelVersion` carries Greg Young's schema versioning for aggregate types, so migration
-code has a single source of truth to branch on when older shapes show up in storage.
+Evans defined the tactical patterns of DDD, but optimistic concurrency control and aggregate schema evolution are
+concerns that emerged later in mainstream production code. `AggregateVersion` carries the optimistic offline lock
+formalized by Fowler in PEAA: the value travels with the aggregate, the persistence adapter compares the in-memory value
+against the stored one, and a mismatch raises a concurrency exception instead of overwriting another process's change.
+`ModelVersion` carries Greg Young's schema versioning for aggregate types, so migration code has a single source of
+truth to branch on when older shapes show up in storage.
 
 > Martin Fowler, *Patterns of Enterprise Application Architecture* (Addison-Wesley, 2002), "Optimistic Offline
 > Lock".
@@ -1070,59 +1067,47 @@ code has a single source of truth to branch on when older shapes show up in stor
 
 `reconstituteStrict()` static on the interface even though PHP's polymorphism for static methods is limited?
 
-The interface declaration documents the contract: every `EventualAggregateRoot` exposes two static factories with
-the shape `(Identity, array, AggregateVersion): static` that repositories can call. PHP does not dispatch static
-calls through interfaces at runtime, so the consumer always names the concrete class
-(`Order::reconstituteStrict(...)`, `Reservation::reconstitutePartial(...)`). The interface still earns its keep: it
-forces aggregates to expose the factories, the trait default provides both for free (`reconstituteStrict` delegates
-to `reconstitutePartial`), and overrides remain bound to the declared signature. The parameter name is free per
-LSP, so an override of `reconstitutePartial` can rename `$identity` to `$orderId` for readability, but the type
-must remain `Identity`, narrowing to a concrete identity class would break LSP. Concrete types are enforced inside
-the override with `instanceof`.
+The interface declaration documents the contract: every `EventualAggregateRoot` exposes two static factories with the
+shape `(Identity, array, AggregateVersion): static` that repositories can call. PHP does not dispatch static calls
+through interfaces at runtime, so the consumer always names the concrete class (`Order::reconstituteStrict(...)`,
+`Reservation::reconstitutePartial(...)`). The interface still earns its keep: it forces aggregates to expose the
+factories, the trait default provides both for free (`reconstituteStrict` delegates to `reconstitutePartial`), and
+overrides remain bound to the declared signature. The parameter name is free per LSP, so an override of
+`reconstitutePartial` can rename `$identity` to `$orderId` for readability, but the type must remain `Identity`,
+narrowing to a concrete identity class would break LSP. Concrete types are enforced inside the override with
+`instanceof`.
 
 > Barbara Liskov and Jeannette Wing, *A Behavioral Notion of Subtyping* (ACM TOPLAS, 1994).
 
-### 12. Why was `reconstituteAggregateVersion()` removed?
+### 12. Why are `DomainEvent` and `IntegrationEvent` siblings instead of parent and child?
 
-It was never part of the external contract. The only caller was the trait's own `reconstitute()` factory, which
-needed to set the aggregate version on the instance it had just built. Exposing that internal step as a public
-instance method invited misuse (repositories calling it on aggregates they had not just reconstituted) without
-adding any expressiveness over assigning the property directly. The factory now writes `$aggregate->aggregateVersion`
-directly inside the trait, which is legal because the assignment happens in the static method of the same class
-after the trait flattens into the aggregate. Eliminating the public method tightens the surface and removes the
-documentation burden of explaining when calling it is correct.
-
-### 13. Why are `DomainEvent` and `IntegrationEvent` siblings instead of parent and child?
-
-Domain events evolve freely with the internal model. Integration events are a public contract
-that must remain backward-compatible across bounded-context consumers. A parent/child relationship
-would make every domain event eligible to cross the bounded-context boundary by virtue of typing,
-reintroducing the very coupling the distinction exists to eliminate. Sibling interfaces force the
-boundary crossing to be an explicit translation step, observable in the type system. There is no
-accidental publication: the compiler rejects a `DomainEvent` where an `IntegrationEvent` is
+Domain events evolve freely with the internal model. Integration events are a public contract that must remain
+backward-compatible across bounded-context consumers. A parent/child relationship would make every domain event eligible
+to cross the bounded-context boundary by virtue of typing, reintroducing the very coupling the distinction exists to
+eliminate. Sibling interfaces force the boundary crossing to be an explicit translation step, observable in the type
+system. There is no accidental publication: the compiler rejects a `DomainEvent` where an `IntegrationEvent` is
 expected, and the `IntegrationEventTranslator` is the only path between the two.
 
 > Vaughn Vernon, *Implementing Domain-Driven Design* (Addison-Wesley, 2013), Chapter 3,
 > "Context Maps".
 
-### 14. Why doesn't the library let me publish a `DomainEvent` directly through the outbox?
+### 13. Why doesn't the library let me publish a `DomainEvent` directly through the outbox?
 
-The Anti-Corruption Layer exists precisely to keep the public contract isolated from the internal
-model. A shortcut that lets a domain event become an integration event without an explicit
-translation step erases that boundary.
+The Anti-Corruption Layer exists precisely to keep the public contract isolated from the internal model. A shortcut that
+lets a domain event become an integration event without an explicit translation step erases that boundary.
 
-Without translation, internal model refactors propagate silently to external consumers. A renamed
-field or a new value object on a domain event changes the published payload with no compile-time
-signal. Consumers break at runtime, not at the CI boundary where the change was introduced.
+Without translation, internal model refactors propagate silently to external consumers. A renamed field or a new value
+object on a domain event changes the published payload with no compile-time signal. Consumers break at runtime, not at
+the CI boundary where the change was introduced.
 
-Domain events are versioned by the internal model; integration events are versioned by the public
-contract. Coupling them forces a single revision counter to serve two evolution speeds, which
-collapses the ability to evolve each side independently.
+Domain events are versioned by the internal model; integration events are versioned by the public contract. Coupling
+them forces a single revision counter to serve two evolution speeds, which collapses the ability to evolve each side
+independently.
 
-Even when a domain event and an integration event happen to share the same shape today, the cost
-of writing a translator that copies fields is a few seconds per event. In return: static analysis
-flags drift between the two shapes, refactor pressure surfaces in CI as a compile error inside the
-translator, and the public contract is locatable as a single namespace in the codebase.
+Even when a domain event and an integration event happen to share the same shape today, the cost of writing a translator
+that copies fields is a few seconds per event. In return: static analysis flags drift between the two shapes, refactor
+pressure surfaces in CI as a compile error inside the translator, and the public contract is locatable as a single
+namespace in the codebase.
 
 > Vaughn Vernon, *Implementing Domain-Driven Design* (Addison-Wesley, 2013), Chapter 3,
 > "Context Maps", section "Anticorruption Layer".
