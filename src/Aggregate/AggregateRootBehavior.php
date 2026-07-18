@@ -11,13 +11,16 @@ use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
 use TinyBlocks\BuildingBlocks\Internal\AggregateReflection;
 use TinyBlocks\BuildingBlocks\Internal\ClassName;
+use TinyBlocks\Mapper\Transient;
 
 trait AggregateRootBehavior
 {
     use EntityBehavior;
 
+    #[Transient]
     private EventRecords $recordedEvents;
 
+    #[Transient]
     private AggregateVersion $aggregateVersion;
 
     protected static function createBlank(Identity $identity): static
