@@ -47,11 +47,11 @@ final readonly class EventRecord implements ValueObject
         ?Utc $occurredAt = null
     ): EventRecord {
         return new EventRecord(
-            id: $id ?? Uuid::generateV7(),
+            id: ($id ?? Uuid::generateV7()),
             event: $event,
             revision: $event->revision(),
             eventType: EventType::fromDomainEvent(event: $event),
-            occurredAt: $occurredAt ?? Utc::now(),
+            occurredAt: ($occurredAt ?? Utc::now()),
             aggregateId: $aggregateId,
             aggregateType: $aggregateType,
             aggregateVersion: $aggregateVersion

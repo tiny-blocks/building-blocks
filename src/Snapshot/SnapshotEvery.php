@@ -32,6 +32,6 @@ final readonly class SnapshotEvery implements SnapshotCondition
     {
         $value = $aggregate->aggregateVersion()->value;
 
-        return $value > 0 && $value % $this->count === 0;
+        return $value > 0 && ($value % $this->count) === 0;
     }
 }

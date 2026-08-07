@@ -44,19 +44,19 @@ trait AggregateRootBehavior
 
     public function aggregateVersion(): AggregateVersion
     {
-        return $this->aggregateVersion ?? AggregateVersion::initial();
+        return ($this->aggregateVersion ?? AggregateVersion::initial());
     }
 
     public function peekEvents(): EventRecords
     {
-        $records = $this->recordedEvents ?? EventRecords::createFromEmpty();
+        $records = ($this->recordedEvents ?? EventRecords::createFromEmpty());
 
         return EventRecords::createFrom(elements: $records);
     }
 
     public function pullEvents(): EventRecords
     {
-        $records = $this->recordedEvents ?? EventRecords::createFromEmpty();
+        $records = ($this->recordedEvents ?? EventRecords::createFromEmpty());
         $this->recordedEvents = EventRecords::createFromEmpty();
 
         return $records;

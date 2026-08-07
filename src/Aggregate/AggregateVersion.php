@@ -61,7 +61,7 @@ final readonly class AggregateVersion implements ValueObject, Ordinal
      */
     public function next(): AggregateVersion
     {
-        return new AggregateVersion(value: $this->value + 1);
+        return new AggregateVersion(value: ($this->value + 1));
     }
 
     public function value(): int
