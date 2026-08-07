@@ -6,7 +6,6 @@ namespace TinyBlocks\BuildingBlocks\Aggregate;
 
 use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\DomainEvent;
-use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Exceptions\IncompleteAggregateState;
 use TinyBlocks\BuildingBlocks\Internal\AggregateReflection;
 

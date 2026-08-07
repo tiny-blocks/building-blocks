@@ -23,7 +23,7 @@ class BaseCart implements EventSourcingRoot
 
     public function applySnapshot(Snapshot $snapshot): void
     {
-        $this->productIds = $snapshot->aggregateState()['productIds'] ?? [];
+        $this->productIds = ($snapshot->aggregateState()['productIds'] ?? []);
     }
 
     public function productIds(): array

@@ -35,7 +35,7 @@ final class Cart implements EventSourcingRoot
     public function applySnapshot(Snapshot $snapshot): void
     {
         $state = $snapshot->aggregateState();
-        $this->productIds = $state['productIds'] ?? [];
+        $this->productIds = ($state['productIds'] ?? []);
     }
 
     public function productIds(): array
