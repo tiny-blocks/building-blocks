@@ -1143,9 +1143,8 @@ Without translation, internal model refactors propagate silently to external con
 object on a domain event changes the published payload with no compile-time signal. Consumers break at runtime, not at
 the CI boundary where the change was introduced.
 
-Domain events are versioned by the internal model; integration events are versioned by the public contract. Coupling
-them forces a single revision counter to serve two evolution speeds, which collapses the ability to evolve each side
-independently.
+Domain events are versioned by the internal model, integration events by the public contract. Coupling them forces a
+single revision counter to serve two evolution speeds, which collapses the ability to evolve each side independently.
 
 Even when a domain event and an integration event happen to share the same shape today, the cost of writing a translator
 that copies fields is a few seconds per event. In return: static analysis flags drift between the two shapes, refactor
