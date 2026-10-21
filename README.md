@@ -269,8 +269,16 @@ drained instance.
 
 #### Declaring events
 
-* `DomainEvent`: contract for a fact that happened in the domain. The only required method is `revision()`, defaulted to
-  `Revision::initial()` by `DomainEventBehavior`. Override only when bumping the event schema.
+* `DomainEvent`: contract for a fact that happened in the domain. It declares three methods:
+
+  | Method         | Returns    | Default in `DomainEventBehavior` | Purpose                                       |
+  |----------------|------------|----------------------------------|-----------------------------------------------|
+  | `revision()`   | `Revision` | `Revision::initial()`            | Schema revision. Override to bump the schema. |
+  | `eventType()`  | `string`   | None, every event implements it  | Stable PascalCase type identifier.            |
+  | `occurredAt()` | `?Utc`     | `null`                           | Instant the event happened. See below.        |
+
+  `eventType()` is decoupled from the class name, so renaming or moving the class keeps already-persisted event types
+  valid.
 
   ```php
   <?php
@@ -279,7 +287,6 @@ drained instance.
 
   use TinyBlocks\BuildingBlocks\Event\DomainEvent;
   use TinyBlocks\BuildingBlocks\Event\DomainEventBehavior;
-  use TinyBlocks\BuildingBlocks\Event\Revision;
 
   final readonly class OrderPlaced implements DomainEvent
   {
@@ -287,6 +294,11 @@ drained instance.
 
       public function __construct(public string $item)
       {
+      }
+
+      public function eventType(): string
+      {
+          return 'OrderPlaced';
       }
   }
   ```
@@ -313,6 +325,11 @@ drained instance.
       public function revision(): Revision
       {
           return Revision::of(value: 2);
+      }
+
+      public function eventType(): string
+      {
+          return 'OrderPlaced';
       }
   }
   ```
@@ -353,6 +370,11 @@ drained instance.
 
       public function __construct(public string $carrier, public Utc $shippedAt)
       {
+      }
+
+      public function eventType(): string
+      {
+          return 'OrderShipped';
       }
 
       public function occurredAt(): ?Utc
@@ -523,14 +545,14 @@ Every envelope carries `$id`, `$event`, `$revision`, `$eventType`, `$occurredAt`
   argument, then the event's own `occurredAt()`, then `Utc::now()`. The id and occurrence timestamp are the value
   objects `TinyBlocks\BuildingBlocks\Uuid` and `TinyBlocks\BuildingBlocks\Utc`.
 
-  | Parameter          | Type               | Required | Description                                                             |
-            |--------------------|--------------------|----------|-------------------------------------------------------------------------|
-  | `id`               | `?Uuid`            | No       | Explicit envelope identifier. Defaults to a fresh `Uuid::generateV7()`. |
-  | `event`            | `DomainEvent`      | Yes      | The event being recorded.                                               |
-  | `occurredAt`       | `?Utc`             | No       | Explicit occurrence timestamp. Defaults to `occurredAt()`, then now.    |
-  | `aggregateId`      | `Identity`         | Yes      | The aggregate identity that produced the event.                         |
-  | `aggregateType`    | `string`           | Yes      | The short class name of the aggregate.                                  |
-  | `aggregateVersion` | `AggregateVersion` | Yes      | The aggregate version assigned to this envelope.                        |
+  | Parameter          | Type               | Required | Description                                                 |
+  |--------------------|--------------------|----------|-------------------------------------------------------------|
+  | `id`               | `?Uuid`            | No       | Envelope identifier. Defaults to `Uuid::generateV7()`.      |
+  | `event`            | `DomainEvent`      | Yes      | The event being recorded.                                   |
+  | `occurredAt`       | `?Utc`             | No       | Occurrence timestamp. Defaults to `occurredAt()`, then now. |
+  | `aggregateId`      | `Identity`         | Yes      | The aggregate identity that produced the event.             |
+  | `aggregateType`    | `string`           | Yes      | The short class name of the aggregate.                      |
+  | `aggregateVersion` | `AggregateVersion` | Yes      | The aggregate version assigned to this envelope.            |
 
   ```php
   <?php
@@ -677,10 +699,10 @@ canonical signal that the event is purely internal and must not cross the bounde
 originating `EventRecord`. The identifier is reused from the originating record so that outbox relay retries remain
 idempotent. The revision and event type are derived from the integration event, not from the domain event.
 
-| Parameter          | Type               | Description                                                                       |
-|--------------------|--------------------|-----------------------------------------------------------------------------------|
-| `eventRecord`      | `EventRecord`      | Originating domain event record. Supplies transport metadata.                     |
-| `integrationEvent` | `IntegrationEvent` | Integration event produced by the translator. Supplies payload and public schema. |
+| Parameter          | Type               | Description                                                       |
+|--------------------|--------------------|-------------------------------------------------------------------|
+| `eventRecord`      | `EventRecord`      | Originating domain event record. Supplies transport metadata.     |
+| `integrationEvent` | `IntegrationEvent` | Translated integration event. Supplies payload and public schema. |
 
   ```php
   <?php
