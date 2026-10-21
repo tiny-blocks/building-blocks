@@ -32,21 +32,6 @@ trait AggregateRootBehavior
         return $aggregate;
     }
 
-    public function modelVersion(): ModelVersion
-    {
-        return ModelVersion::initial();
-    }
-
-    public function aggregateType(): string
-    {
-        return ClassName::shortName(target: static::class);
-    }
-
-    public function aggregateVersion(): AggregateVersion
-    {
-        return ($this->aggregateVersion ?? AggregateVersion::initial());
-    }
-
     public function peekEvents(): EventRecords
     {
         $records = ($this->recordedEvents ?? EventRecords::createFromEmpty());
@@ -62,14 +47,19 @@ trait AggregateRootBehavior
         return $records;
     }
 
-    private function nextAggregateVersion(): void
+    public function modelVersion(): ModelVersion
     {
-        $this->aggregateVersion = $this->aggregateVersion()->next();
+        return ModelVersion::initial();
     }
 
-    private function appendRecordedEvent(EventRecord $record): void
+    public function aggregateType(): string
     {
-        $this->recordedEvents = ($this->recordedEvents ?? EventRecords::createFromEmpty())->add(elements: $record);
+        return ClassName::shortName(target: static::class);
+    }
+
+    public function aggregateVersion(): AggregateVersion
+    {
+        return ($this->aggregateVersion ?? AggregateVersion::initial());
     }
 
     private function buildEventRecord(DomainEvent $event): EventRecord
@@ -80,5 +70,15 @@ trait AggregateRootBehavior
             aggregateType: $this->aggregateType(),
             aggregateVersion: $this->aggregateVersion()
         );
+    }
+
+    private function appendRecordedEvent(EventRecord $record): void
+    {
+        $this->recordedEvents = ($this->recordedEvents ?? EventRecords::createFromEmpty())->add(elements: $record);
+    }
+
+    private function nextAggregateVersion(): void
+    {
+        $this->aggregateVersion = $this->aggregateVersion()->next();
     }
 }

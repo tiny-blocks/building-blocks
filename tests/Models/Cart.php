@@ -8,6 +8,7 @@ use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRootBehavior;
 use TinyBlocks\BuildingBlocks\Aggregate\ModelVersion;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
+use TinyBlocks\BuildingBlocks\Utc;
 
 final class Cart implements EventSourcingRoot
 {
@@ -17,7 +18,7 @@ final class Cart implements EventSourcingRoot
 
     private array $productIds = [];
 
-    public static function withProducts(CartId $cartId, int $count): Cart
+    public static function withProducts(int $count, CartId $cartId): Cart
     {
         $cart = Cart::blank(identity: $cartId);
         for ($index = 1; $index <= $count; $index++) {
@@ -27,9 +28,19 @@ final class Cart implements EventSourcingRoot
         return $cart;
     }
 
-    public function addProduct(string $productId): void
+    public function addProduct(string $productId, ?Utc $addedAt = null): void
     {
-        $this->when(event: new ProductAdded(productId: $productId));
+        $this->when(event: new ProductAdded(productId: $productId, addedAt: $addedAt));
+    }
+
+    public function productIds(): array
+    {
+        return $this->productIds;
+    }
+
+    public function modelVersion(): ModelVersion
+    {
+        return ModelVersion::of(value: 1);
     }
 
     public function applySnapshot(Snapshot $snapshot): void
@@ -38,19 +49,9 @@ final class Cart implements EventSourcingRoot
         $this->productIds = ($state['productIds'] ?? []);
     }
 
-    public function productIds(): array
-    {
-        return $this->productIds;
-    }
-
     protected function identityProperty(): string
     {
         return 'cartId';
-    }
-
-    public function modelVersion(): ModelVersion
-    {
-        return ModelVersion::of(value: 1);
     }
 
     protected function whenProductAdded(ProductAdded $event): void

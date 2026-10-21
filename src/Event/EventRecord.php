@@ -35,7 +35,8 @@ final readonly class EventRecord implements ValueObject
      * @param string $aggregateType The short class name of the aggregate.
      * @param AggregateVersion $aggregateVersion The aggregate version assigned to this envelope.
      * @param Uuid|null $id Optional explicit identifier. Defaults to a fresh UUIDv7.
-     * @param Utc|null $occurredAt Optional explicit occurrence timestamp. Defaults to now.
+     * @param Utc|null $occurredAt Optional explicit occurrence timestamp. Defaults to the instant the event
+     *                             carries ({@see DomainEvent::occurredAt}), then to now.
      * @return EventRecord The constructed envelope.
      */
     public static function from(
@@ -51,7 +52,7 @@ final readonly class EventRecord implements ValueObject
             event: $event,
             revision: $event->revision(),
             eventType: EventType::fromDomainEvent(event: $event),
-            occurredAt: ($occurredAt ?? Utc::now()),
+            occurredAt: ($occurredAt ?? $event->occurredAt() ?? Utc::now()),
             aggregateId: $aggregateId,
             aggregateType: $aggregateType,
             aggregateVersion: $aggregateVersion

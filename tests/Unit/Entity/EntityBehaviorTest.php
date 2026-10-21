@@ -21,7 +21,7 @@ final class EntityBehaviorTest extends TestCase
         $orderId = new OrderId(value: 'ord-1');
 
         /** @And the aggregate placed for that identity */
-        $order = Order::place(orderId: $orderId, item: 'book');
+        $order = Order::place(item: 'book', orderId: $orderId);
 
         /** @When retrieving the identity */
         $identity = $order->identity();
@@ -33,7 +33,7 @@ final class EntityBehaviorTest extends TestCase
     public function testIdentityNameReturnsPropertyName(): void
     {
         /** @Given an order aggregate */
-        $order = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'pen');
+        $order = Order::place(item: 'pen', orderId: new OrderId(value: 'ord-1'));
 
         /** @When retrieving the identity property name */
         $name = $order->identityName();
@@ -57,7 +57,7 @@ final class EntityBehaviorTest extends TestCase
     public function testIdentityValueReturnsScalarForSingleIdentity(): void
     {
         /** @Given an order whose identity is a single-value identifier */
-        $order = Order::place(orderId: new OrderId(value: 'ord-42'), item: 'pen');
+        $order = Order::place(item: 'pen', orderId: new OrderId(value: 'ord-42'));
 
         /** @When retrieving the identity value */
         $identityValue = $order->identityValue();
@@ -81,10 +81,10 @@ final class EntityBehaviorTest extends TestCase
     public function testSameIdentityOfReturnsTrueForAggregatesWithEqualIdentity(): void
     {
         /** @Given two orders sharing the same identity value */
-        $first = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'book');
+        $first = Order::place(item: 'book', orderId: new OrderId(value: 'ord-1'));
 
         /** @And a second order with the same identity value */
-        $second = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'pen');
+        $second = Order::place(item: 'pen', orderId: new OrderId(value: 'ord-1'));
 
         /** @When comparing their identities */
         $haveSameIdentity = $first->sameIdentityOf(other: $second);
@@ -96,10 +96,10 @@ final class EntityBehaviorTest extends TestCase
     public function testSameIdentityOfReturnsFalseForAggregatesWithDifferentIdentity(): void
     {
         /** @Given two orders with different identities */
-        $first = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'book');
+        $first = Order::place(item: 'book', orderId: new OrderId(value: 'ord-1'));
 
         /** @And a second order with a different identity */
-        $second = Order::place(orderId: new OrderId(value: 'ord-2'), item: 'pen');
+        $second = Order::place(item: 'pen', orderId: new OrderId(value: 'ord-2'));
 
         /** @When comparing their identities */
         $haveSameIdentity = $first->sameIdentityOf(other: $second);
@@ -111,7 +111,7 @@ final class EntityBehaviorTest extends TestCase
     public function testIdentityEqualsReturnsTrueForEqualIdentity(): void
     {
         /** @Given an order and an identity with the same value */
-        $order = Order::place(orderId: new OrderId(value: 'ord-5'), item: 'lamp');
+        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-5'));
 
         /** @And a separately constructed identity of equal value */
         $sameIdentity = new OrderId(value: 'ord-5');
@@ -126,7 +126,7 @@ final class EntityBehaviorTest extends TestCase
     public function testIdentityEqualsReturnsFalseForDifferentIdentity(): void
     {
         /** @Given an order and an identity with a different value */
-        $order = Order::place(orderId: new OrderId(value: 'ord-5'), item: 'lamp');
+        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-5'));
 
         /** @And a different identity value */
         $otherIdentity = new OrderId(value: 'ord-9');

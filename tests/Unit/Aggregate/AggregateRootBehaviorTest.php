@@ -40,7 +40,7 @@ final class AggregateRootBehaviorTest extends TestCase
     public function testModelVersionDefaultsToZeroWhenUndefined(): void
     {
         /** @Given an aggregate with the default model version */
-        $order = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'pen');
+        $order = Order::place(item: 'pen', orderId: new OrderId(value: 'ord-1'));
 
         /** @When retrieving the model version */
         $version = $order->modelVersion();
@@ -64,7 +64,7 @@ final class AggregateRootBehaviorTest extends TestCase
     public function testAggregateTypeForOutboxAggregate(): void
     {
         /** @Given an Order aggregate */
-        $order = Order::place(orderId: new OrderId(value: 'ord-2'), item: 'lamp');
+        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-2'));
 
         /** @When retrieving the aggregate type */
         $aggregateType = $order->aggregateType();
@@ -108,7 +108,7 @@ final class AggregateRootBehaviorTest extends TestCase
     public function testPullDrainsRecordedEventsAndClearsTheBuffer(): void
     {
         /** @Given an order with a recorded event */
-        $order = Order::place(orderId: new OrderId(value: 'ord-pull'), item: 'pen');
+        $order = Order::place(item: 'pen', orderId: new OrderId(value: 'ord-pull'));
 
         /** @When pulling the recorded events */
         $pulled = $order->pullEvents();

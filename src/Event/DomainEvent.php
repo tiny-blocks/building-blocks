@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace TinyBlocks\BuildingBlocks\Event;
 
+use TinyBlocks\BuildingBlocks\Utc;
+
 /**
  * Marker interface for records of something that happened in the domain.
  *
@@ -27,6 +29,11 @@ namespace TinyBlocks\BuildingBlocks\Event;
  * plain PHP object otherwise, any implementation remains compatible with PSR-14
  * (<code>Psr\EventDispatcher\EventDispatcherInterface</code>) without additional adaptation.</p>
  *
+ * <p>Each event also tells when it happened via the <code>occurredAt()</code> method, defaulted to
+ * <code>null</code> by {@see DomainEventBehavior}. The aggregate stamps the {@see EventRecord} with that
+ * instant, or with the current moment when the event carries none, so a command method can take the
+ * instant from its caller instead of reading the clock.</p>
+ *
  * @see Vaughn Vernon, <em>Implementing Domain-Driven Design</em> (Addison-Wesley, 2013), Chapter 8
  *      "Domain Events".
  */
@@ -48,4 +55,14 @@ interface DomainEvent
      * @return string The stable PascalCase type identifier.
      */
     public function eventType(): string;
+
+    /**
+     * Returns the instant this event happened.
+     *
+     * <p>When <code>null</code>, the {@see EventRecord} built for this event is stamped with the current
+     * moment.</p>
+     *
+     * @return Utc|null The occurrence instant, or null when the event does not carry one.
+     */
+    public function occurredAt(): ?Utc;
 }

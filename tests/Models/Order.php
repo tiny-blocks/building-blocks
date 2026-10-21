@@ -10,6 +10,7 @@ use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRootBehavior;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
+use TinyBlocks\BuildingBlocks\Utc;
 
 final class Order implements EventualAggregateRoot
 {
@@ -19,6 +20,15 @@ final class Order implements EventualAggregateRoot
 
     private function __construct(private readonly OrderId $id)
     {
+    }
+
+    public static function place(string $item, OrderId $orderId): Order
+    {
+        $order = new Order(id: $orderId);
+        $order->status = 'placed';
+        $order->pushEvent(event: new OrderPlaced(item: $item));
+
+        return $order;
     }
 
     public static function reconstitutePartial(
@@ -39,18 +49,9 @@ final class Order implements EventualAggregateRoot
         return $order;
     }
 
-    public static function place(OrderId $orderId, string $item): Order
-    {
-        $order = new Order(id: $orderId);
-        $order->status = 'placed';
-        $order->pushEvent(event: new OrderPlaced(item: $item));
-
-        return $order;
-    }
-
-    public function ship(string $carrier): void
+    public function ship(string $carrier, ?Utc $shippedAt = null): void
     {
         $this->status = 'shipped';
-        $this->pushEvent(event: new OrderShipped(carrier: $carrier));
+        $this->pushEvent(event: new OrderShipped(carrier: $carrier, shippedAt: $shippedAt));
     }
 }

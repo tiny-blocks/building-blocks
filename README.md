@@ -333,6 +333,39 @@ drained instance.
   $previous->isBefore(other: $current);  # true
   ```
 
+* `occurredAt()`: the instant the event happened, as a `TinyBlocks\BuildingBlocks\Utc`. Defaulted to `null` by
+  `DomainEventBehavior`, in which case the `EventRecord` is stamped with `Utc::now()` when the aggregate records the
+  event. Override it when the instant comes from the caller (typically read from a clock), so the aggregate never reads
+  the clock itself.
+
+  ```php
+  <?php
+
+  declare(strict_types=1);
+
+  use TinyBlocks\BuildingBlocks\Event\DomainEvent;
+  use TinyBlocks\BuildingBlocks\Event\DomainEventBehavior;
+  use TinyBlocks\BuildingBlocks\Utc;
+
+  final readonly class OrderShipped implements DomainEvent
+  {
+      use DomainEventBehavior;
+
+      public function __construct(public string $carrier, public Utc $shippedAt)
+      {
+      }
+
+      public function occurredAt(): ?Utc
+      {
+          return $this->shippedAt;
+      }
+  }
+  ```
+
+  **Upgrading from 5.x.** `occurredAt()` is new on `DomainEvent` in 6.0. Events that use `DomainEventBehavior` inherit
+  the `null` default and keep the previous behavior. Events that implement `DomainEvent` without the trait must add
+  `public function occurredAt(): ?Utc`, returning `null` to keep the previous behavior.
+
 #### Emitting events from the aggregate
 
 * `pushEvent()`: protected method on `EventualAggregateRootBehavior`. Increments the aggregate version and appends a
@@ -362,6 +395,13 @@ drained instance.
           return $order;
       }
   }
+  ```
+
+  The record takes its occurrence timestamp from the event's `occurredAt()`, falling back to `Utc::now()` when the
+  event carries none. A command method that receives the instant from its caller passes it into the event.
+
+  ```php
+  $order->pushEvent(event: new OrderShipped(carrier: $carrier, shippedAt: $shippedAt));
   ```
 
 #### Draining events
@@ -478,15 +518,16 @@ Every envelope carries `$id`, `$event`, `$revision`, `$eventType`, `$occurredAt`
 
 * `EventRecord::from()`: factory for the rare cases that require building an envelope outside the aggregate boundary,
   typically test code that fabricates envelopes as inputs to handlers, or consumer-side code deserializing payloads from
-  a wire format. The constructor is private, so `from()` is the only construction path. The `id` and
-  `occurredAt` parameters fall back to sensible defaults (`Uuid::generateV7()` and `Utc::now()`) when omitted. The id
-  and occurrence timestamp are the value objects `TinyBlocks\BuildingBlocks\Uuid` and `TinyBlocks\BuildingBlocks\Utc`.
+  a wire format. The constructor is private, so `from()` is the only construction path. The `id` parameter falls back
+  to `Uuid::generateV7()` when omitted. The occurrence timestamp is resolved in a fixed order: the explicit `occurredAt`
+  argument, then the event's own `occurredAt()`, then `Utc::now()`. The id and occurrence timestamp are the value
+  objects `TinyBlocks\BuildingBlocks\Uuid` and `TinyBlocks\BuildingBlocks\Utc`.
 
   | Parameter          | Type               | Required | Description                                                             |
             |--------------------|--------------------|----------|-------------------------------------------------------------------------|
   | `id`               | `?Uuid`            | No       | Explicit envelope identifier. Defaults to a fresh `Uuid::generateV7()`. |
   | `event`            | `DomainEvent`      | Yes      | The event being recorded.                                               |
-  | `occurredAt`       | `?Utc`             | No       | Explicit occurrence timestamp. Defaults to `Utc::now()`.                |
+  | `occurredAt`       | `?Utc`             | No       | Explicit occurrence timestamp. Defaults to `occurredAt()`, then now.    |
   | `aggregateId`      | `Identity`         | Yes      | The aggregate identity that produced the event.                         |
   | `aggregateType`    | `string`           | Yes      | The short class name of the aggregate.                                  |
   | `aggregateVersion` | `AggregateVersion` | Yes      | The aggregate version assigned to this envelope.                        |
@@ -695,6 +736,8 @@ idempotent. The revision and event type are derived from the integration event, 
       }
   }
   ```
+
+  Like `pushEvent()`, `when()` stamps the record with the event's `occurredAt()`, falling back to `Utc::now()`.
 
 * `eventHandlers()`: explicit registration. Returns a map of `class-string<DomainEvent>` to callable. When the map is
   non-empty, the trait dispatches through it instead of using the implicit `when<X>` convention. Use this when handler
@@ -1100,9 +1143,8 @@ Without translation, internal model refactors propagate silently to external con
 object on a domain event changes the published payload with no compile-time signal. Consumers break at runtime, not at
 the CI boundary where the change was introduced.
 
-Domain events are versioned by the internal model; integration events are versioned by the public contract. Coupling
-them forces a single revision counter to serve two evolution speeds, which collapses the ability to evolve each side
-independently.
+Domain events are versioned by the internal model, integration events by the public contract. Coupling them forces a
+single revision counter to serve two evolution speeds, which collapses the ability to evolve each side independently.
 
 Even when a domain event and an integration event happen to share the same shape today, the cost of writing a translator
 that copies fields is a few seconds per event. In return: static analysis flags drift between the two shapes, refactor
