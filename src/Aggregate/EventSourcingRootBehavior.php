@@ -10,7 +10,6 @@ use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Exceptions\EventHandlerMethodNotFound;
 use TinyBlocks\BuildingBlocks\Exceptions\NoEventHandlerRegistered;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
-use TinyBlocks\BuildingBlocks\Utc;
 
 trait EventSourcingRootBehavior
 {
@@ -52,12 +51,11 @@ trait EventSourcingRootBehavior
      * collection. Not part of the public surface.</p>
      *
      * @param DomainEvent $event The event to record and apply.
-     * @param Utc|null $occurredAt Optional explicit occurrence timestamp. Defaults to now.
      */
-    protected function when(DomainEvent $event, ?Utc $occurredAt = null): void
+    protected function when(DomainEvent $event): void
     {
         $this->nextAggregateVersion();
-        $record = $this->buildEventRecord(event: $event, occurredAt: $occurredAt);
+        $record = $this->buildEventRecord(event: $event);
         $this->applyEvent(record: $record);
         $this->appendRecordedEvent(record: $record);
     }

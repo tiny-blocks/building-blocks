@@ -279,21 +279,6 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         self::assertTrue($reservation->identity()->equals(other: $reservationId));
     }
 
-    public function testPushEventWhenOccurrenceInstantGivenThenRecordCarriesThatInstant(): void
-    {
-        /** @Given a placed order */
-        $order = Order::place(item: 'desk', orderId: new OrderId(value: 'ord-6'));
-
-        /** @And an occurrence instant read from a clock */
-        $shippedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
-
-        /** @When shipping the order at that instant */
-        $order->ship(carrier: 'UPS', shippedAt: $shippedAt);
-
-        /** @Then the recorded shipping event carries the given instant */
-        self::assertEquals($shippedAt, $order->peekEvents()->last()->occurredAt);
-    }
-
     public function testReconstituteStrictWhenRequiredPropertyOmittedThenNamesItIncomplete(): void
     {
         /** @Given an identity for an aggregate reconstituted without its required state */
@@ -313,6 +298,21 @@ final class EventualAggregateRootBehaviorTest extends TestCase
             /** @And the message identifies that property */
             self::assertStringContainsString('status', $exception->getMessage());
         }
+    }
+
+    public function testPushEventWhenEventCarriesOccurrenceInstantThenRecordCarriesThatInstant(): void
+    {
+        /** @Given a placed order */
+        $order = Order::place(item: 'desk', orderId: new OrderId(value: 'ord-6'));
+
+        /** @And an occurrence instant read from a clock */
+        $shippedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
+
+        /** @When shipping the order at that instant */
+        $order->ship(carrier: 'UPS', shippedAt: $shippedAt);
+
+        /** @Then the recorded shipping event carries the given instant */
+        self::assertSame($shippedAt, $order->peekEvents()->last()->occurredAt);
     }
 
     public function testReconstituteStrictWhenAllRequiredStateProvidedThenMatchesLenientResult(): void

@@ -52,6 +52,6 @@ final class Order implements EventualAggregateRoot
     public function ship(string $carrier, ?Utc $shippedAt = null): void
     {
         $this->status = 'shipped';
-        $this->pushEvent(event: new OrderShipped(carrier: $carrier), occurredAt: $shippedAt);
+        $this->pushEvent(event: new OrderShipped(carrier: $carrier, shippedAt: $shippedAt));
     }
 }

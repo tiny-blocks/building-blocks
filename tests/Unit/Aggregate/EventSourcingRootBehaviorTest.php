@@ -363,21 +363,6 @@ final class EventSourcingRootBehaviorTest extends TestCase
         self::assertSame(['zebra', 'apple', 'mango'], $reconstituted->productIds());
     }
 
-    public function testDomainOperationWhenOccurrenceInstantGivenThenRecordCarriesThatInstant(): void
-    {
-        /** @Given a blank cart */
-        $cart = Cart::blank(identity: new CartId(value: 'cart-occurred-at'));
-
-        /** @And an occurrence instant read from a clock */
-        $addedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
-
-        /** @When adding a product at that instant */
-        $cart->addProduct(productId: 'prod-1', addedAt: $addedAt);
-
-        /** @Then the recorded event carries the given instant */
-        self::assertEquals($addedAt, $cart->peekEvents()->first()->occurredAt);
-    }
-
     public function testReconstituteCombinedWithSnapshotAndLaterEventsAdvancesAggregateVersion(): void
     {
         /** @Given a cart identity */
@@ -407,5 +392,20 @@ final class EventSourcingRootBehaviorTest extends TestCase
 
         /** @Then the aggregate version reflects the last applied event */
         self::assertSame(2, $reconstituted->aggregateVersion()->value);
+    }
+
+    public function testDomainOperationWhenEventCarriesOccurrenceInstantThenRecordCarriesThatInstant(): void
+    {
+        /** @Given a blank cart */
+        $cart = Cart::blank(identity: new CartId(value: 'cart-occurred-at'));
+
+        /** @And an occurrence instant read from a clock */
+        $addedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
+
+        /** @When adding a product at that instant */
+        $cart->addProduct(productId: 'prod-1', addedAt: $addedAt);
+
+        /** @Then the recorded event carries the given instant */
+        self::assertSame($addedAt, $cart->peekEvents()->first()->occurredAt);
     }
 }

@@ -8,7 +8,6 @@ use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\DomainEvent;
 use TinyBlocks\BuildingBlocks\Exceptions\IncompleteAggregateState;
 use TinyBlocks\BuildingBlocks\Internal\AggregateReflection;
-use TinyBlocks\BuildingBlocks\Utc;
 
 trait EventualAggregateRootBehavior
 {
@@ -55,11 +54,10 @@ trait EventualAggregateRootBehavior
      * domain invariants.</p>
      *
      * @param DomainEvent $event The event to record.
-     * @param Utc|null $occurredAt Optional explicit occurrence timestamp. Defaults to now.
      */
-    protected function pushEvent(DomainEvent $event, ?Utc $occurredAt = null): void
+    protected function pushEvent(DomainEvent $event): void
     {
         $this->nextAggregateVersion();
-        $this->appendRecordedEvent(record: $this->buildEventRecord(event: $event, occurredAt: $occurredAt));
+        $this->appendRecordedEvent(record: $this->buildEventRecord(event: $event));
     }
 }

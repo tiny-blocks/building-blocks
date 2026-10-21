@@ -11,7 +11,6 @@ use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
 use TinyBlocks\BuildingBlocks\Internal\AggregateReflection;
 use TinyBlocks\BuildingBlocks\Internal\ClassName;
-use TinyBlocks\BuildingBlocks\Utc;
 use TinyBlocks\Mapper\Transient;
 
 trait AggregateRootBehavior
@@ -63,14 +62,13 @@ trait AggregateRootBehavior
         return ($this->aggregateVersion ?? AggregateVersion::initial());
     }
 
-    private function buildEventRecord(DomainEvent $event, ?Utc $occurredAt = null): EventRecord
+    private function buildEventRecord(DomainEvent $event): EventRecord
     {
         return EventRecord::from(
             event: $event,
             aggregateId: $this->identity(),
             aggregateType: $this->aggregateType(),
-            aggregateVersion: $this->aggregateVersion(),
-            occurredAt: $occurredAt
+            aggregateVersion: $this->aggregateVersion()
         );
     }
 

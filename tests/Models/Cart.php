@@ -30,7 +30,7 @@ final class Cart implements EventSourcingRoot
 
     public function addProduct(string $productId, ?Utc $addedAt = null): void
     {
-        $this->when(event: new ProductAdded(productId: $productId), occurredAt: $addedAt);
+        $this->when(event: new ProductAdded(productId: $productId, addedAt: $addedAt));
     }
 
     public function productIds(): array

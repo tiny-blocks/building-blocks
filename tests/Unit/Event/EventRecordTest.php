@@ -7,6 +7,7 @@ namespace Test\TinyBlocks\BuildingBlocks\Unit\Event;
 use PHPUnit\Framework\TestCase;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderPlaced;
+use Test\TinyBlocks\BuildingBlocks\Models\OrderShipped;
 use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Utc;
@@ -49,6 +50,66 @@ final class EventRecordTest extends TestCase
         self::assertSame($occurredAt, $record->occurredAt);
         self::assertSame('Order', $record->aggregateType);
         self::assertSame('OrderPlaced', $record->eventType->value);
+        self::assertSame($aggregateVersion, $record->aggregateVersion);
+    }
+
+    public function testFromFactoryUsesProvidedOptionalFields(): void
+    {
+        /** @Given an explicit identifier */
+        $id = Uuid::generateV7();
+
+        /** @And an aggregate identity */
+        $orderId = new OrderId(value: 'ord-of-2');
+
+        /** @And a domain event */
+        $placedEvent = new OrderPlaced(item: 'pen');
+
+        /** @And an explicit occurrence timestamp */
+        $occurredAt = Utc::now();
+
+        /** @And the first aggregate version */
+        $aggregateVersion = AggregateVersion::first();
+
+        /** @When building the record via the factory with all optional fields */
+        $record = EventRecord::from(
+            event: $placedEvent,
+            aggregateId: $orderId,
+            aggregateType: 'Order',
+            aggregateVersion: $aggregateVersion,
+            id: $id,
+            occurredAt: $occurredAt
+        );
+
+        /** @Then the optional fields are applied exactly */
+        self::assertSame($id, $record->id);
+        self::assertSame($occurredAt, $record->occurredAt);
+    }
+
+    public function testFromFactoryBuildsRecordWithRequiredFields(): void
+    {
+        /** @Given an aggregate identity */
+        $orderId = new OrderId(value: 'ord-of-1');
+
+        /** @And a domain event */
+        $placedEvent = new OrderPlaced(item: 'notebook');
+
+        /** @And the first aggregate version */
+        $aggregateVersion = AggregateVersion::first();
+
+        /** @When building the record via the factory */
+        $record = EventRecord::from(
+            event: $placedEvent,
+            aggregateId: $orderId,
+            aggregateType: 'Order',
+            aggregateVersion: $aggregateVersion
+        );
+
+        /** @Then the envelope carries the expected metadata */
+        self::assertSame('OrderPlaced', $record->eventType->value);
+        self::assertSame(1, $record->revision->value);
+        self::assertSame($placedEvent, $record->event);
+        self::assertSame($orderId, $record->aggregateId);
+        self::assertSame('Order', $record->aggregateType);
         self::assertSame($aggregateVersion, $record->aggregateVersion);
     }
 
@@ -137,63 +198,47 @@ final class EventRecordTest extends TestCase
         self::assertFalse($areEqual);
     }
 
-    public function testFromFactoryBuildsRecordWithRequiredFields(): void
+    public function testFromWhenEventCarriesOccurrenceInstantThenRecordUsesThatInstant(): void
     {
-        /** @Given an aggregate identity */
-        $orderId = new OrderId(value: 'ord-of-1');
+        /** @Given the instant the shipment happened */
+        $shippedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
 
-        /** @And a domain event */
-        $placedEvent = new OrderPlaced(item: 'notebook');
+        /** @And a domain event carrying that instant */
+        $shippedEvent = new OrderShipped(carrier: 'UPS', shippedAt: $shippedAt);
 
-        /** @And the first aggregate version */
-        $aggregateVersion = AggregateVersion::first();
-
-        /** @When building the record via the factory */
+        /** @When building the record via the factory without an explicit occurrence timestamp */
         $record = EventRecord::from(
-            event: $placedEvent,
-            aggregateId: $orderId,
+            event: $shippedEvent,
+            aggregateId: new OrderId(value: 'ord-of-3'),
             aggregateType: 'Order',
-            aggregateVersion: $aggregateVersion
+            aggregateVersion: AggregateVersion::first()
         );
 
-        /** @Then the envelope carries the expected metadata */
-        self::assertSame('OrderPlaced', $record->eventType->value);
-        self::assertSame(1, $record->revision->value);
-        self::assertSame($placedEvent, $record->event);
-        self::assertSame($orderId, $record->aggregateId);
-        self::assertSame('Order', $record->aggregateType);
-        self::assertSame($aggregateVersion, $record->aggregateVersion);
+        /** @Then the record carries the instant from the event */
+        self::assertSame($shippedAt, $record->occurredAt);
     }
 
-    public function testFromFactoryUsesProvidedOptionalFields(): void
+    public function testFromWhenExplicitInstantAndEventInstantGivenThenExplicitInstantWins(): void
     {
-        /** @Given an explicit identifier */
-        $id = Uuid::generateV7();
+        /** @Given the instant the event carries */
+        $shippedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
 
-        /** @And an aggregate identity */
-        $orderId = new OrderId(value: 'ord-of-2');
+        /** @And a domain event carrying that instant */
+        $shippedEvent = new OrderShipped(carrier: 'UPS', shippedAt: $shippedAt);
 
-        /** @And a domain event */
-        $placedEvent = new OrderPlaced(item: 'pen');
+        /** @And an explicit occurrence timestamp that differs from the event instant */
+        $occurredAt = Utc::fromIso8601(value: '2026-03-02T08:30:00+00:00');
 
-        /** @And an explicit occurrence timestamp */
-        $occurredAt = Utc::now();
-
-        /** @And the first aggregate version */
-        $aggregateVersion = AggregateVersion::first();
-
-        /** @When building the record via the factory with all optional fields */
+        /** @When building the record via the factory with the explicit occurrence timestamp */
         $record = EventRecord::from(
-            event: $placedEvent,
-            aggregateId: $orderId,
+            event: $shippedEvent,
+            aggregateId: new OrderId(value: 'ord-of-4'),
             aggregateType: 'Order',
-            aggregateVersion: $aggregateVersion,
-            id: $id,
+            aggregateVersion: AggregateVersion::first(),
             occurredAt: $occurredAt
         );
 
-        /** @Then the optional fields are applied exactly */
-        self::assertSame($id, $record->id);
+        /** @Then the explicit occurrence timestamp is applied */
         self::assertSame($occurredAt, $record->occurredAt);
     }
 }
