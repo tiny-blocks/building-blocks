@@ -10,10 +10,10 @@ use TinyBlocks\Vo\ValueObject;
  * Immutable value that uniquely identifies an {@see Entity} within its aggregate boundary.
  *
  * <p>Identity is the stable thread that allows an Entity to be recognized across distinct representations
- * and lifecycle states. Implementations are expected to be immutable. In PHP 8.5+ this is achieved through
- * `final readonly class`.</p>
+ * and lifecycle states. Implementations are expected to be immutable, typically declared as a
+ * <code>final readonly class</code>.</p>
  *
- * <p>Implementations are expected to also be value objects for equality purposes. See the two shipped
+ * <p>The interface extends <code>ValueObject</code>, so identities compare by value. See the two shipped
  * variants: {@see SingleIdentity} for scalar-backed identifiers and {@see CompoundIdentity} for
  * multi-field tuples.</p>
  *

@@ -8,7 +8,9 @@ use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\DomainEvent;
 use TinyBlocks\BuildingBlocks\Event\EventRecord;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
+use TinyBlocks\BuildingBlocks\Exceptions\EventHandlerMethodNotFound;
 use TinyBlocks\BuildingBlocks\Exceptions\MissingIdentityProperty;
+use TinyBlocks\BuildingBlocks\Exceptions\NoEventHandlerRegistered;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
 /**
@@ -51,6 +53,9 @@ interface EventSourcingRoot extends AggregateRoot
      * @param Snapshot|null $snapshot Optional snapshot to restore from before replay.
      * @return static The reconstituted aggregate.
      * @throws MissingIdentityProperty If the property referenced by <code>identityProperty()</code> does not exist.
+     * @throws NoEventHandlerRegistered If handlers are registered and a replayed event's class has none.
+     * @throws EventHandlerMethodNotFound If no handlers are registered and the aggregate has no method named
+     *                                    <code>when</code> followed by a replayed event's <code>eventType()</code>.
      */
     public static function reconstitute(iterable $records, Identity $identity, ?Snapshot $snapshot = null): static;
 
@@ -80,10 +85,11 @@ interface EventSourcingRoot extends AggregateRoot
     /**
      * Returns the explicit map of event class names to handler callables.
      *
-     * <p>When the returned array is empty, the trait falls back to the implicit
-     * convention <code>whenEventShortName</code>. When the array is
-     * non-empty, it is the authoritative source: only events whose class names
-     * appear as keys can be applied. Absence triggers an exception.</p>
+     * <p>When the returned array is empty, the trait falls back to the implicit convention: the method
+     * named <code>when</code> followed by the event's <code>eventType()</code> value (an event typed
+     * <code>ProductAdded</code> is applied by <code>whenProductAdded()</code>). When the array is non-empty,
+     * it is the authoritative source: only events whose class names appear as keys can be applied, and any
+     * other event raises {@see NoEventHandlerRegistered}.</p>
      *
      * @return array<class-string<DomainEvent>, callable> The explicit event-class to handler map.
      */

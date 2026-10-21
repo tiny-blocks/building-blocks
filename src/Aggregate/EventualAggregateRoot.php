@@ -41,10 +41,13 @@ interface EventualAggregateRoot extends AggregateRoot
      * {@see EventualAggregateRootBehavior} hydrates state properties by reflection from the
      * <code>$aggregateState</code> map.</p>
      *
-     * <p>Aggregates may override this factory to customize the hydration or to rename the identity
-     * parameter to reflect their specific identity type. The type must remain <code>Identity</code> per
-     * LSP rules on static methods. Concrete identity types can be enforced inside the override via
-     * <code>instanceof</code>.</p>
+     * <p>Aggregates may override this factory to customize the hydration. The override keeps the declared
+     * parameter names, because {@see reconstituteStrict()} calls it with named arguments
+     * (<code>identity:</code>, <code>aggregateState:</code>, <code>aggregateVersion:</code>) and a renamed
+     * parameter fails with an unknown named parameter error. The identity type must remain
+     * <code>Identity</code> per LSP rules on static methods. Concrete identity types can be enforced inside
+     * the override via <code>instanceof</code>. An override that builds the instance itself also initializes
+     * the recorded-events buffer, since {@see reconstituteStrict()} flags every uninitialized property.</p>
      *
      * @param Identity $identity The aggregate's identity.
      * @param array<string, mixed> $aggregateState Map of property name to value. Unknown keys are ignored.
