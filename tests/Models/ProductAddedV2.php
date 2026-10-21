@@ -12,7 +12,7 @@ final readonly class ProductAddedV2 implements DomainEvent
 {
     use DomainEventBehavior;
 
-    public function __construct(public string $productId, public int $quantity)
+    public function __construct(public int $quantity, public string $productId)
     {
     }
 

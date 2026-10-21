@@ -17,50 +17,6 @@ use TinyBlocks\BuildingBlocks\Uuid;
 
 final class IntegrationEventRecordTest extends TestCase
 {
-    public function testFromReusesOriginatingRecordMetadataAndCarriesIntegrationEvent(): void
-    {
-        /** @Given an explicit event identifier */
-        $id = Uuid::generateV7();
-
-        /** @And an aggregate identity */
-        $orderId = new OrderId(value: 'ord-1');
-
-        /** @And an explicit occurrence timestamp */
-        $occurredAt = Utc::now();
-
-        /** @And the first aggregate version */
-        $aggregateVersion = AggregateVersion::first();
-
-        /** @And an event record built with explicit metadata */
-        $eventRecord = EventRecord::from(
-            event: new OrderPlaced(item: 'book'),
-            aggregateId: $orderId,
-            aggregateType: 'Order',
-            aggregateVersion: $aggregateVersion,
-            id: $id,
-            occurredAt: $occurredAt
-        );
-
-        /** @And a PaymentConfirmed integration event */
-        $integrationEvent = new PaymentConfirmed(orderId: 'ord-1');
-
-        /** @When building the integration event record */
-        $record = IntegrationEventRecord::from(
-            eventRecord: $eventRecord,
-            integrationEvent: $integrationEvent
-        );
-
-        /** @Then the transport metadata is reused from the originating record */
-        self::assertSame($id, $record->id);
-        self::assertSame($occurredAt, $record->occurredAt);
-        self::assertSame($orderId, $record->aggregateId);
-        self::assertSame('Order', $record->aggregateType);
-        self::assertSame($aggregateVersion, $record->aggregateVersion);
-
-        /** @And the envelope carries the integration event */
-        self::assertSame($integrationEvent, $record->event);
-    }
-
     public function testFromDerivesRevisionFromIntegrationEvent(): void
     {
         /** @Given an OrderPlaced domain event with the initial revision */
@@ -108,5 +64,49 @@ final class IntegrationEventRecordTest extends TestCase
 
         /** @Then the event type reflects the integration event class, not the domain event class */
         self::assertSame('PaymentConfirmed', $record->eventType->value);
+    }
+
+    public function testFromReusesOriginatingRecordMetadataAndCarriesIntegrationEvent(): void
+    {
+        /** @Given an explicit event identifier */
+        $id = Uuid::generateV7();
+
+        /** @And an aggregate identity */
+        $orderId = new OrderId(value: 'ord-1');
+
+        /** @And an explicit occurrence timestamp */
+        $occurredAt = Utc::now();
+
+        /** @And the first aggregate version */
+        $aggregateVersion = AggregateVersion::first();
+
+        /** @And an event record built with explicit metadata */
+        $eventRecord = EventRecord::from(
+            event: new OrderPlaced(item: 'book'),
+            aggregateId: $orderId,
+            aggregateType: 'Order',
+            aggregateVersion: $aggregateVersion,
+            id: $id,
+            occurredAt: $occurredAt
+        );
+
+        /** @And a PaymentConfirmed integration event */
+        $integrationEvent = new PaymentConfirmed(orderId: 'ord-1');
+
+        /** @When building the integration event record */
+        $record = IntegrationEventRecord::from(
+            eventRecord: $eventRecord,
+            integrationEvent: $integrationEvent
+        );
+
+        /** @Then the transport metadata is reused from the originating record */
+        self::assertSame($id, $record->id);
+        self::assertSame($occurredAt, $record->occurredAt);
+        self::assertSame($orderId, $record->aggregateId);
+        self::assertSame('Order', $record->aggregateType);
+        self::assertSame($aggregateVersion, $record->aggregateVersion);
+
+        /** @And the envelope carries the integration event */
+        self::assertSame($integrationEvent, $record->event);
     }
 }

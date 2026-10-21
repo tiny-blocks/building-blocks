@@ -13,16 +13,16 @@ use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 
 final class AggregateRootBehaviorTest extends TestCase
 {
-    public function testAggregateVersionIsZeroForBlankAggregate(): void
+    public function testAggregateTypeForOutboxAggregate(): void
     {
-        /** @Given a freshly instantiated aggregate with no events */
-        $cart = Cart::blank(identity: new CartId(value: 'cart-1'));
+        /** @Given an Order aggregate */
+        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-2'));
 
-        /** @When retrieving the aggregate version */
-        $aggregateVersion = $cart->aggregateVersion();
+        /** @When retrieving the aggregate type */
+        $aggregateType = $order->aggregateType();
 
-        /** @Then it is zero */
-        self::assertSame(0, $aggregateVersion->value);
+        /** @Then it matches the short class name */
+        self::assertSame('Order', $aggregateType);
     }
 
     public function testModelVersionReflectsDeclaredValue(): void
@@ -37,18 +37,6 @@ final class AggregateRootBehaviorTest extends TestCase
         self::assertSame(1, $version->value);
     }
 
-    public function testModelVersionDefaultsToZeroWhenUndefined(): void
-    {
-        /** @Given an aggregate with the default model version */
-        $order = Order::place(item: 'pen', orderId: new OrderId(value: 'ord-1'));
-
-        /** @When retrieving the model version */
-        $version = $order->modelVersion();
-
-        /** @Then the default is zero */
-        self::assertSame(0, $version->value);
-    }
-
     public function testAggregateTypeForEventSourcedAggregate(): void
     {
         /** @Given a Cart aggregate */
@@ -61,32 +49,28 @@ final class AggregateRootBehaviorTest extends TestCase
         self::assertSame('Cart', $aggregateType);
     }
 
-    public function testAggregateTypeForOutboxAggregate(): void
+    public function testAggregateVersionIsZeroForBlankAggregate(): void
     {
-        /** @Given an Order aggregate */
-        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-2'));
-
-        /** @When retrieving the aggregate type */
-        $aggregateType = $order->aggregateType();
-
-        /** @Then it matches the short class name */
-        self::assertSame('Order', $aggregateType);
-    }
-
-    public function testReconstitutedAggregateVersionMatchesPersistedValue(): void
-    {
-        /** @Given an Order reconstituted with a persisted aggregate version of 5 */
-        $order = Order::reconstitutePartial(
-            identity: new OrderId(value: 'ord-3'),
-            aggregateState: [],
-            aggregateVersion: AggregateVersion::of(value: 5)
-        );
+        /** @Given a freshly instantiated aggregate with no events */
+        $cart = Cart::blank(identity: new CartId(value: 'cart-1'));
 
         /** @When retrieving the aggregate version */
-        $aggregateVersion = $order->aggregateVersion();
+        $aggregateVersion = $cart->aggregateVersion();
 
-        /** @Then it matches the persisted value */
-        self::assertSame(5, $aggregateVersion->value);
+        /** @Then it is zero */
+        self::assertSame(0, $aggregateVersion->value);
+    }
+
+    public function testModelVersionDefaultsToZeroWhenUndefined(): void
+    {
+        /** @Given an aggregate with the default model version */
+        $order = Order::place(item: 'pen', orderId: new OrderId(value: 'ord-1'));
+
+        /** @When retrieving the model version */
+        $version = $order->modelVersion();
+
+        /** @Then the default is zero */
+        self::assertSame(0, $version->value);
     }
 
     public function testPushAfterReconstituteAdvancesVersionByOne(): void
@@ -118,5 +102,21 @@ final class AggregateRootBehaviorTest extends TestCase
 
         /** @And the aggregate buffer is now empty */
         self::assertTrue($order->peekEvents()->isEmpty());
+    }
+
+    public function testReconstitutedAggregateVersionMatchesPersistedValue(): void
+    {
+        /** @Given an Order reconstituted with a persisted aggregate version of 5 */
+        $order = Order::reconstitutePartial(
+            identity: new OrderId(value: 'ord-3'),
+            aggregateState: [],
+            aggregateVersion: AggregateVersion::of(value: 5)
+        );
+
+        /** @When retrieving the aggregate version */
+        $aggregateVersion = $order->aggregateVersion();
+
+        /** @Then it matches the persisted value */
+        self::assertSame(5, $aggregateVersion->value);
     }
 }

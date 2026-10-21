@@ -21,14 +21,14 @@ class BaseCart implements EventSourcingRoot
         $this->when(event: new ProductAdded(productId: $productId));
     }
 
-    public function applySnapshot(Snapshot $snapshot): void
-    {
-        $this->productIds = ($snapshot->aggregateState()['productIds'] ?? []);
-    }
-
     public function productIds(): array
     {
         return $this->productIds;
+    }
+
+    public function applySnapshot(Snapshot $snapshot): void
+    {
+        $this->productIds = ($snapshot->aggregateState()['productIds'] ?? []);
     }
 
     protected function whenProductAdded(ProductAdded $event): void

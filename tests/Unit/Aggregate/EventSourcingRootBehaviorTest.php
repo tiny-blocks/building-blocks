@@ -86,7 +86,7 @@ final class EventSourcingRootBehaviorTest extends TestCase
         $cart = ExplicitCart::blank(identity: new CartId(value: 'cart-explicit-2'));
 
         /** @When adding a v2 product whose event overrides revision */
-        $cart->addProductV2(productId: 'prod-v2', quantity: 3);
+        $cart->addProductV2(quantity: 3, productId: 'prod-v2');
 
         /** @Then the recorded event carries revision 2 */
         self::assertSame(2, $cart->peekEvents()->first()->revision->value);

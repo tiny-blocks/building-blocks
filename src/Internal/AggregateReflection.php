@@ -14,6 +14,20 @@ final class AggregateReflection
     }
 
     /**
+     * Assigns each state entry to its matching property on the target.
+     *
+     * @param array<string, mixed> $state The property-keyed state to assign.
+     */
+    public static function hydrate(array $state, object $target): void
+    {
+        foreach ($state as $property => $value) {
+            if (property_exists($target, $property)) {
+                AggregateReflection::assignProperty(value: $value, target: $target, property: $property);
+            }
+        }
+    }
+
+    /**
      * Creates an instance of the given class without invoking its constructor.
      *
      * @template T of object
@@ -25,23 +39,9 @@ final class AggregateReflection
         return new ReflectionClass(objectOrClass: $class)->newInstanceWithoutConstructor();
     }
 
-    public static function assignProperty(object $target, string $property, mixed $value): void
+    public static function assignProperty(mixed $value, object $target, string $property): void
     {
         new ReflectionProperty(class: $target, property: $property)->setValue($target, $value);
-    }
-
-    /**
-     * Assigns each state entry to its matching property on the target.
-     *
-     * @param array<string, mixed> $state The property-keyed state to assign.
-     */
-    public static function hydrate(object $target, array $state): void
-    {
-        foreach ($state as $property => $value) {
-            if (property_exists($target, $property)) {
-                AggregateReflection::assignProperty(target: $target, property: $property, value: $value);
-            }
-        }
     }
 
     /**

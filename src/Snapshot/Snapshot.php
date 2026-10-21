@@ -67,16 +67,6 @@ final readonly class Snapshot implements ValueObject
     }
 
     /**
-     * Returns the aggregate type.
-     *
-     * @return string The short class name of the snapshotted aggregate.
-     */
-    public function aggregateType(): string
-    {
-        return $this->aggregateType;
-    }
-
-    /**
      * Returns the creation timestamp.
      *
      * @return Utc The instant the snapshot was taken.
@@ -94,6 +84,16 @@ final readonly class Snapshot implements ValueObject
     public function aggregateId(): mixed
     {
         return $this->aggregateId;
+    }
+
+    /**
+     * Returns the aggregate type.
+     *
+     * @return string The short class name of the snapshotted aggregate.
+     */
+    public function aggregateType(): string
+    {
+        return $this->aggregateType;
     }
 
     /**

@@ -42,6 +42,34 @@ final class EntityBehaviorTest extends TestCase
         self::assertSame('id', $name);
     }
 
+    public function testShipThrowsWhenIdentityPropertyIsMissing(): void
+    {
+        /** @Given an aggregate whose identityProperty() points to a non-existent property */
+        $order = new OrderWithMissingIdentityProperty();
+
+        /** @Then a MissingIdentityProperty exception carrying the property name is thrown */
+        $this->expectException(MissingIdentityProperty::class);
+        $this->expectExceptionMessage('nonExistentProperty');
+
+        /** @When shipping the order and indirectly reaching identity resolution */
+        $order->ship();
+    }
+
+    public function testIdentityEqualsReturnsTrueForEqualIdentity(): void
+    {
+        /** @Given an order and an identity with the same value */
+        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-5'));
+
+        /** @And a separately constructed identity of equal value */
+        $sameIdentity = new OrderId(value: 'ord-5');
+
+        /** @When comparing the identity */
+        $hasEqualIdentity = $order->identityEquals(other: $sameIdentity);
+
+        /** @Then the comparison yields true */
+        self::assertTrue($hasEqualIdentity);
+    }
+
     public function testIdentityNameReturnsOverriddenPropertyName(): void
     {
         /** @Given a blank Cart with an explicit identityProperty override */
@@ -64,6 +92,21 @@ final class EntityBehaviorTest extends TestCase
 
         /** @Then the raw scalar is returned */
         self::assertSame('ord-42', $identityValue);
+    }
+
+    public function testIdentityEqualsReturnsFalseForDifferentIdentity(): void
+    {
+        /** @Given an order and an identity with a different value */
+        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-5'));
+
+        /** @And a different identity value */
+        $otherIdentity = new OrderId(value: 'ord-9');
+
+        /** @When comparing the identity */
+        $hasEqualIdentity = $order->identityEquals(other: $otherIdentity);
+
+        /** @Then the comparison yields false */
+        self::assertFalse($hasEqualIdentity);
     }
 
     public function testIdentityValueReturnsAssociativeArrayForCompoundIdentity(): void
@@ -106,48 +149,5 @@ final class EntityBehaviorTest extends TestCase
 
         /** @Then the comparison yields false */
         self::assertFalse($haveSameIdentity);
-    }
-
-    public function testIdentityEqualsReturnsTrueForEqualIdentity(): void
-    {
-        /** @Given an order and an identity with the same value */
-        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-5'));
-
-        /** @And a separately constructed identity of equal value */
-        $sameIdentity = new OrderId(value: 'ord-5');
-
-        /** @When comparing the identity */
-        $hasEqualIdentity = $order->identityEquals(other: $sameIdentity);
-
-        /** @Then the comparison yields true */
-        self::assertTrue($hasEqualIdentity);
-    }
-
-    public function testIdentityEqualsReturnsFalseForDifferentIdentity(): void
-    {
-        /** @Given an order and an identity with a different value */
-        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-5'));
-
-        /** @And a different identity value */
-        $otherIdentity = new OrderId(value: 'ord-9');
-
-        /** @When comparing the identity */
-        $hasEqualIdentity = $order->identityEquals(other: $otherIdentity);
-
-        /** @Then the comparison yields false */
-        self::assertFalse($hasEqualIdentity);
-    }
-
-    public function testShipThrowsWhenIdentityPropertyIsMissing(): void
-    {
-        /** @Given an aggregate whose identityProperty() points to a non-existent property */
-        $order = new OrderWithMissingIdentityProperty();
-
-        /** @Then a MissingIdentityProperty exception carrying the property name is thrown */
-        $this->expectException(MissingIdentityProperty::class);
-        $this->expectExceptionMessage('nonExistentProperty');
-
-        /** @When shipping the order and indirectly reaching identity resolution */
-        $order->ship();
     }
 }

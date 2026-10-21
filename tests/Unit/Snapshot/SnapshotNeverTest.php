@@ -23,18 +23,6 @@ final class SnapshotNeverTest extends TestCase
         self::assertFalse($shouldSnapshot);
     }
 
-    public function testReturnsFalseForAggregateAtHighAggregateVersion(): void
-    {
-        /** @Given a cart at aggregate version 1000 */
-        $cart = Cart::withProducts(count: 1000, cartId: new CartId(value: 'cart-never-2'));
-
-        /** @When asking the SnapshotNever condition whether to snapshot */
-        $shouldSnapshot = SnapshotNever::create()->shouldSnapshot(aggregate: $cart);
-
-        /** @Then the result is always false */
-        self::assertFalse($shouldSnapshot);
-    }
-
     public function testTwoInstancesAreEqualUnderLooseComparison(): void
     {
         /** @Given two separate SnapshotNever instances */
@@ -45,5 +33,17 @@ final class SnapshotNeverTest extends TestCase
 
         /** @Then both instances are equal under loose comparison */
         self::assertEquals($first, $second);
+    }
+
+    public function testReturnsFalseForAggregateAtHighAggregateVersion(): void
+    {
+        /** @Given a cart at aggregate version 1000 */
+        $cart = Cart::withProducts(count: 1000, cartId: new CartId(value: 'cart-never-2'));
+
+        /** @When asking the SnapshotNever condition whether to snapshot */
+        $shouldSnapshot = SnapshotNever::create()->shouldSnapshot(aggregate: $cart);
+
+        /** @Then the result is always false */
+        self::assertFalse($shouldSnapshot);
     }
 }

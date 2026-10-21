@@ -15,6 +15,11 @@ final class CartWithoutHandler implements EventSourcingRoot
 
     private CartId $cartId;
 
+    public function modelVersion(): ModelVersion
+    {
+        return ModelVersion::of(value: 1);
+    }
+
     public function applySnapshot(Snapshot $snapshot): void
     {
     }
@@ -22,10 +27,5 @@ final class CartWithoutHandler implements EventSourcingRoot
     protected function identityProperty(): string
     {
         return 'cartId';
-    }
-
-    public function modelVersion(): ModelVersion
-    {
-        return ModelVersion::of(value: 1);
     }
 }

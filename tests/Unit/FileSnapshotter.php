@@ -14,13 +14,13 @@ final class FileSnapshotter implements Snapshotter
 
     private ?Snapshot $latest = null;
 
-    public function lastSnapshot(): ?Snapshot
-    {
-        return $this->latest;
-    }
-
     protected function persist(Snapshot $snapshot): void
     {
         $this->latest = $snapshot;
+    }
+
+    public function lastSnapshot(): ?Snapshot
+    {
+        return $this->latest;
     }
 }

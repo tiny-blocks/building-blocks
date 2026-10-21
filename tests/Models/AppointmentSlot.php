@@ -12,7 +12,7 @@ final readonly class AppointmentSlot implements CompoundIdentity
 {
     use CompoundIdentityBehavior;
 
-    public function __construct(public string $tenantId, public int $practitionerId, public Revision $revision)
+    public function __construct(public Revision $revision, public string $tenantId, public int $practitionerId)
     {
     }
 }

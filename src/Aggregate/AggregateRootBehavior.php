@@ -26,7 +26,7 @@ trait AggregateRootBehavior
     protected static function createBlank(Identity $identity): static
     {
         $aggregate = AggregateReflection::instantiate(class: static::class);
-        AggregateReflection::assignProperty(target: $aggregate, property: $aggregate->identityName(), value: $identity);
+        AggregateReflection::assignProperty(value: $identity, target: $aggregate, property: $aggregate->identityName());
         $aggregate->recordedEvents = EventRecords::createFromEmpty();
 
         return $aggregate;

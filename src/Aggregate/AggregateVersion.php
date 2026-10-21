@@ -23,13 +23,15 @@ final readonly class AggregateVersion implements ValueObject, Ordinal
     }
 
     /**
-     * Creates an AggregateVersion with the initial value of 0.
+     * Creates an AggregateVersion from the given integer value.
      *
-     * @return AggregateVersion The initial aggregate version.
+     * @param int $value The aggregate version. Must be greater than or equal to 0.
+     * @return AggregateVersion The created instance.
+     * @throws InvalidAggregateVersion If the value is less than 0.
      */
-    public static function initial(): AggregateVersion
+    public static function of(int $value): AggregateVersion
     {
-        return new AggregateVersion(value: 0);
+        return new AggregateVersion(value: $value);
     }
 
     /**
@@ -43,15 +45,13 @@ final readonly class AggregateVersion implements ValueObject, Ordinal
     }
 
     /**
-     * Creates an AggregateVersion from the given integer value.
+     * Creates an AggregateVersion with the initial value of 0.
      *
-     * @param int $value The aggregate version. Must be greater than or equal to 0.
-     * @return AggregateVersion The created instance.
-     * @throws InvalidAggregateVersion If the value is less than 0.
+     * @return AggregateVersion The initial aggregate version.
      */
-    public static function of(int $value): AggregateVersion
+    public static function initial(): AggregateVersion
     {
-        return new AggregateVersion(value: $value);
+        return new AggregateVersion(value: 0);
     }
 
     /**

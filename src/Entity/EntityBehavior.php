@@ -32,14 +32,14 @@ trait EntityBehavior
         return $this->identity()->identityValue();
     }
 
-    public function sameIdentityOf(Entity $other): bool
-    {
-        return $this->identityEquals(other: $other->identity());
-    }
-
     public function identityEquals(Identity $other): bool
     {
         return $this->identity()->equals(other: $other);
+    }
+
+    public function sameIdentityOf(Entity $other): bool
+    {
+        return $this->identityEquals(other: $other->identity());
     }
 
     /**
