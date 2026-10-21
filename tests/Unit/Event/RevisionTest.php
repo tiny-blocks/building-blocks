@@ -23,6 +23,17 @@ final class RevisionTest extends TestCase
         self::assertTrue($constructor->isPrivate());
     }
 
+    #[DataProvider('invalidValues')]
+    public function testOfRejectsNonPositiveValue(int $invalidValue): void
+    {
+        /** @Then an InvalidRevision exception carrying the invalid value is thrown */
+        $this->expectException(InvalidRevision::class);
+        $this->expectExceptionMessage((string)$invalidValue);
+
+        /** @When constructing with a non-positive value */
+        Revision::of(value: $invalidValue);
+    }
+
     public function testInitialReturnsRevisionOfOne(): void
     {
         /** @When requesting the initial revision */
@@ -30,15 +41,6 @@ final class RevisionTest extends TestCase
 
         /** @Then the value is one */
         self::assertSame(1, $revision->value);
-    }
-
-    public function testOfReturnsRevisionWithGivenValue(): void
-    {
-        /** @When requesting a revision of that value */
-        $revision = Revision::of(value: 42);
-
-        /** @Then the value matches */
-        self::assertSame(42, $revision->value);
     }
 
     public function testOfStoresTheMinimumValidValue(): void
@@ -62,6 +64,15 @@ final class RevisionTest extends TestCase
         self::assertSame(42, $value);
     }
 
+    public function testOfReturnsRevisionWithGivenValue(): void
+    {
+        /** @When requesting a revision of that value */
+        $revision = Revision::of(value: 42);
+
+        /** @Then the value matches */
+        self::assertSame(42, $revision->value);
+    }
+
     public function testEqualsReturnsTrueForSameRevision(): void
     {
         /** @Given two revisions with the same value */
@@ -75,36 +86,6 @@ final class RevisionTest extends TestCase
 
         /** @Then they are equal */
         self::assertTrue($areEqual);
-    }
-
-    public function testEqualsReturnsFalseForDifferentRevisions(): void
-    {
-        /** @Given two revisions with different values */
-        $first = Revision::of(value: 1);
-
-        /** @And a distinct counterpart */
-        $second = Revision::of(value: 2);
-
-        /** @When comparing them */
-        $areEqual = $first->equals(other: $second);
-
-        /** @Then they are not equal */
-        self::assertFalse($areEqual);
-    }
-
-    public function testIsAfterReturnsTrueWhenValueIsGreater(): void
-    {
-        /** @Given a revision with a higher value */
-        $higher = Revision::of(value: 3);
-
-        /** @And a revision with a lower value */
-        $lower = Revision::of(value: 1);
-
-        /** @When checking if higher is after lower */
-        $isAfter = $higher->isAfter(other: $lower);
-
-        /** @Then the result is true */
-        self::assertTrue($isAfter);
     }
 
     public function testIsAfterReturnsFalseWhenValueIsEqual(): void
@@ -152,6 +133,21 @@ final class RevisionTest extends TestCase
         self::assertTrue($isBefore);
     }
 
+    public function testIsAfterReturnsTrueWhenValueIsGreater(): void
+    {
+        /** @Given a revision with a higher value */
+        $higher = Revision::of(value: 3);
+
+        /** @And a revision with a lower value */
+        $lower = Revision::of(value: 1);
+
+        /** @When checking if higher is after lower */
+        $isAfter = $higher->isAfter(other: $lower);
+
+        /** @Then the result is true */
+        self::assertTrue($isAfter);
+    }
+
     public function testIsBeforeReturnsFalseWhenValueIsEqual(): void
     {
         /** @Given two revisions with equal values */
@@ -182,24 +178,19 @@ final class RevisionTest extends TestCase
         self::assertFalse($isBefore);
     }
 
-    #[DataProvider('invalidValues')]
-    public function testOfRejectsNonPositiveValue(int $invalidValue): void
+    public function testEqualsReturnsFalseForDifferentRevisions(): void
     {
-        /** @Then an InvalidRevision exception carrying the invalid value is thrown */
-        $this->expectException(InvalidRevision::class);
-        $this->expectExceptionMessage((string)$invalidValue);
+        /** @Given two revisions with different values */
+        $first = Revision::of(value: 1);
 
-        /** @When constructing with a non-positive value */
-        Revision::of(value: $invalidValue);
-    }
+        /** @And a distinct counterpart */
+        $second = Revision::of(value: 2);
 
-    public function testInvalidRevisionIsCatchableAsInvalidArgumentException(): void
-    {
-        /** @Then InvalidRevision is caught by the standard exception type */
-        $this->expectException(InvalidArgumentException::class);
+        /** @When comparing them */
+        $areEqual = $first->equals(other: $second);
 
-        /** @When constructing with an invalid value */
-        Revision::of(value: 0);
+        /** @Then they are not equal */
+        self::assertFalse($areEqual);
     }
 
     public function testInvalidRevisionMessageMentionsTheMinimumAllowed(): void
@@ -207,6 +198,15 @@ final class RevisionTest extends TestCase
         /** @Then the message mentions the minimum allowed value */
         $this->expectException(InvalidRevision::class);
         $this->expectExceptionMessage('greater than or equal to 1');
+
+        /** @When constructing with an invalid value */
+        Revision::of(value: 0);
+    }
+
+    public function testInvalidRevisionIsCatchableAsInvalidArgumentException(): void
+    {
+        /** @Then InvalidRevision is caught by the standard exception type */
+        $this->expectException(InvalidArgumentException::class);
 
         /** @When constructing with an invalid value */
         Revision::of(value: 0);

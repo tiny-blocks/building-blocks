@@ -27,53 +27,6 @@ final class EventTypeTest extends TestCase
         self::assertTrue($constructor->isPrivate());
     }
 
-    public function testFromDomainEventUsesTheDeclaredEventTypeIdentifier(): void
-    {
-        /** @Given a domain event instance */
-        $placedEvent = new OrderPlaced(item: 'book');
-
-        /** @When creating an EventType from the domain event */
-        $eventType = EventType::fromDomainEvent(event: $placedEvent);
-
-        /** @Then the value matches the event's declared type identifier */
-        self::assertSame('OrderPlaced', $eventType->value);
-    }
-
-    public function testFromIntegrationEventUsesTheShortClassNameOfTheIntegrationEvent(): void
-    {
-        /** @Given an integration event instance */
-        $paymentConfirmed = new PaymentConfirmed(orderId: 'ord-1');
-
-        /** @When creating an EventType from the integration event */
-        $eventType = EventType::fromIntegrationEvent(event: $paymentConfirmed);
-
-        /** @Then the value matches the short class name */
-        self::assertSame('PaymentConfirmed', $eventType->value);
-    }
-
-    public function testFromIntegrationEventThrowsWhenClassNameDoesNotMatchPattern(): void
-    {
-        /** @Given an integration event whose short class name does not match the required pattern */
-        $event = new class implements IntegrationEvent {
-            use IntegrationEventBehavior;
-        };
-
-        /** @Then an InvalidEventType exception is thrown */
-        $this->expectException(InvalidEventType::class);
-
-        /** @When creating an EventType from the anonymous integration event */
-        EventType::fromIntegrationEvent(event: $event);
-    }
-
-    public function testFromStringAcceptsValidPascalCase(): void
-    {
-        /** @When creating an EventType from the string */
-        $eventType = EventType::fromString(value: 'OrderShipped');
-
-        /** @Then the value is stored */
-        self::assertSame('OrderShipped', $eventType->value);
-    }
-
     public function testEqualsReturnsTrueForSameValue(): void
     {
         /** @Given two event types with the same name */
@@ -87,6 +40,15 @@ final class EventTypeTest extends TestCase
 
         /** @Then they are equal */
         self::assertTrue($areEqual);
+    }
+
+    public function testFromStringAcceptsValidPascalCase(): void
+    {
+        /** @When creating an EventType from the string */
+        $eventType = EventType::fromString(value: 'OrderShipped');
+
+        /** @Then the value is stored */
+        self::assertSame('OrderShipped', $eventType->value);
     }
 
     public function testEqualsReturnsFalseForDifferentValues(): void
@@ -104,6 +66,16 @@ final class EventTypeTest extends TestCase
         self::assertFalse($areEqual);
     }
 
+    public function testInvalidEventTypeCarriesTheOffendingValue(): void
+    {
+        /** @Then the offending value is included in the message */
+        $this->expectException(InvalidEventType::class);
+        $this->expectExceptionMessage('lowercaseStart');
+
+        /** @When constructing with an invalid value */
+        EventType::fromString(value: 'lowercaseStart');
+    }
+
     #[DataProvider('invalidPatterns')]
     public function testFromStringRejectsValuesNotMatchingPattern(string $invalidValue): void
     {
@@ -115,6 +87,18 @@ final class EventTypeTest extends TestCase
         EventType::fromString(value: $invalidValue);
     }
 
+    public function testFromDomainEventUsesTheDeclaredEventTypeIdentifier(): void
+    {
+        /** @Given a domain event instance */
+        $placedEvent = new OrderPlaced(item: 'book');
+
+        /** @When creating an EventType from the domain event */
+        $eventType = EventType::fromDomainEvent(event: $placedEvent);
+
+        /** @Then the value matches the event's declared type identifier */
+        self::assertSame('OrderPlaced', $eventType->value);
+    }
+
     public function testInvalidEventTypeIsCatchableAsInvalidArgumentException(): void
     {
         /** @Then InvalidEventType is caught by the standard exception type */
@@ -124,14 +108,30 @@ final class EventTypeTest extends TestCase
         EventType::fromString(value: 'invalid');
     }
 
-    public function testInvalidEventTypeCarriesTheOffendingValue(): void
+    public function testFromIntegrationEventThrowsWhenClassNameDoesNotMatchPattern(): void
     {
-        /** @Then the offending value is included in the message */
-        $this->expectException(InvalidEventType::class);
-        $this->expectExceptionMessage('lowercaseStart');
+        /** @Given an integration event whose short class name does not match the required pattern */
+        $event = new class implements IntegrationEvent {
+            use IntegrationEventBehavior;
+        };
 
-        /** @When constructing with an invalid value */
-        EventType::fromString(value: 'lowercaseStart');
+        /** @Then an InvalidEventType exception is thrown */
+        $this->expectException(InvalidEventType::class);
+
+        /** @When creating an EventType from the anonymous integration event */
+        EventType::fromIntegrationEvent(event: $event);
+    }
+
+    public function testFromIntegrationEventUsesTheShortClassNameOfTheIntegrationEvent(): void
+    {
+        /** @Given an integration event instance */
+        $paymentConfirmed = new PaymentConfirmed(orderId: 'ord-1');
+
+        /** @When creating an EventType from the integration event */
+        $eventType = EventType::fromIntegrationEvent(event: $paymentConfirmed);
+
+        /** @Then the value matches the short class name */
+        self::assertSame('PaymentConfirmed', $eventType->value);
     }
 
     public static function invalidPatterns(): array

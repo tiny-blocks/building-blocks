@@ -33,6 +33,27 @@ use TinyBlocks\BuildingBlocks\Exceptions\MissingIdentityProperty;
 interface EventualAggregateRoot extends AggregateRoot
 {
     /**
+     * Reconstitutes the aggregate and verifies every property was initialized.
+     *
+     * <p>Strict variant of {@see reconstitutePartial()}. It delegates to <code>reconstitutePartial</code>,
+     * honoring any override, then checks by reflection that hydration left no declared property
+     * uninitialized. Properties that carry a default value, and untyped properties, are always initialized
+     * by PHP and so are never flagged.</p>
+     *
+     * @param Identity $identity The aggregate's identity.
+     * @param array<string, mixed> $aggregateState Map of property name to value. Unknown keys are ignored.
+     * @param AggregateVersion $aggregateVersion The version to restore. Emitted events advance from this value.
+     * @return static The reconstituted aggregate, with every property guaranteed initialized.
+     * @throws IncompleteAggregateState If hydration left any property uninitialized.
+     * @throws MissingIdentityProperty When the property referenced by <code>identityProperty()</code> does not exist.
+     */
+    public static function reconstituteStrict(
+        Identity $identity,
+        array $aggregateState,
+        AggregateVersion $aggregateVersion
+    ): static;
+
+    /**
      * Reconstitutes the aggregate from persisted state without verifying completeness.
      *
      * <p>Default factory for state-based aggregates. Used by repositories that load aggregate state from
@@ -56,27 +77,6 @@ interface EventualAggregateRoot extends AggregateRoot
      * @throws MissingIdentityProperty When the property referenced by <code>identityProperty()</code> does not exist.
      */
     public static function reconstitutePartial(
-        Identity $identity,
-        array $aggregateState,
-        AggregateVersion $aggregateVersion
-    ): static;
-
-    /**
-     * Reconstitutes the aggregate and verifies every property was initialized.
-     *
-     * <p>Strict variant of {@see reconstitutePartial()}. It delegates to <code>reconstitutePartial</code>,
-     * honoring any override, then checks by reflection that hydration left no declared property
-     * uninitialized. Properties that carry a default value, and untyped properties, are always initialized
-     * by PHP and so are never flagged.</p>
-     *
-     * @param Identity $identity The aggregate's identity.
-     * @param array<string, mixed> $aggregateState Map of property name to value. Unknown keys are ignored.
-     * @param AggregateVersion $aggregateVersion The version to restore. Emitted events advance from this value.
-     * @return static The reconstituted aggregate, with every property guaranteed initialized.
-     * @throws IncompleteAggregateState If hydration left any property uninitialized.
-     * @throws MissingIdentityProperty When the property referenced by <code>identityProperty()</code> does not exist.
-     */
-    public static function reconstituteStrict(
         Identity $identity,
         array $aggregateState,
         AggregateVersion $aggregateVersion

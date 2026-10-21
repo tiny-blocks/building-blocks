@@ -11,6 +11,16 @@ use TinyBlocks\BuildingBlocks\Exceptions\InvalidModelVersion;
 
 final class ModelVersionTest extends TestCase
 {
+    public function testOfRejectsNegativeValue(): void
+    {
+        /** @Then an InvalidModelVersion exception is thrown */
+        $this->expectException(InvalidModelVersion::class);
+        $this->expectExceptionMessage('-1');
+
+        /** @When constructing with a negative value */
+        ModelVersion::of(value: -1);
+    }
+
     public function testInitialReturnsVersionZero(): void
     {
         /** @When requesting the initial model version */
@@ -18,27 +28,6 @@ final class ModelVersionTest extends TestCase
 
         /** @Then the value is zero */
         self::assertSame(0, $version->value);
-    }
-
-    public function testOfReturnsVersionWithGivenValue(): void
-    {
-        /** @When requesting a model version of that value */
-        $version = ModelVersion::of(value: 2);
-
-        /** @Then the value matches */
-        self::assertSame(2, $version->value);
-    }
-
-    public function testValueReturnsTheBackingInteger(): void
-    {
-        /** @Given a model version of 2 */
-        $version = ModelVersion::of(value: 2);
-
-        /** @When retrieving its ordinal value */
-        $value = $version->value();
-
-        /** @Then the backing integer is returned */
-        self::assertSame(2, $value);
     }
 
     public function testEqualsReturnsTrueForSameValue(): void
@@ -54,6 +43,57 @@ final class ModelVersionTest extends TestCase
 
         /** @Then they are equal */
         self::assertTrue($areEqual);
+    }
+
+    public function testValueReturnsTheBackingInteger(): void
+    {
+        /** @Given a model version of 2 */
+        $version = ModelVersion::of(value: 2);
+
+        /** @When retrieving its ordinal value */
+        $value = $version->value();
+
+        /** @Then the backing integer is returned */
+        self::assertSame(2, $value);
+    }
+
+    public function testOfReturnsVersionWithGivenValue(): void
+    {
+        /** @When requesting a model version of that value */
+        $version = ModelVersion::of(value: 2);
+
+        /** @Then the value matches */
+        self::assertSame(2, $version->value);
+    }
+
+    public function testIsAfterReturnsFalseWhenValueIsLess(): void
+    {
+        /** @Given a smaller model version */
+        $smaller = ModelVersion::of(value: 1);
+
+        /** @And a larger counterpart */
+        $larger = ModelVersion::of(value: 8);
+
+        /** @When checking if the smaller is after the larger */
+        $isAfter = $smaller->isAfter(other: $larger);
+
+        /** @Then the result is false */
+        self::assertFalse($isAfter);
+    }
+
+    public function testIsBeforeReturnsTrueWhenValueIsLess(): void
+    {
+        /** @Given a smaller model version */
+        $smaller = ModelVersion::of(value: 3);
+
+        /** @And a larger counterpart */
+        $larger = ModelVersion::of(value: 7);
+
+        /** @When checking if the smaller is before the larger */
+        $isBefore = $smaller->isBefore(other: $larger);
+
+        /** @Then the result is true */
+        self::assertTrue($isBefore);
     }
 
     public function testEqualsReturnsFalseForDifferentValues(): void
@@ -101,34 +141,19 @@ final class ModelVersionTest extends TestCase
         self::assertFalse($isAfter);
     }
 
-    public function testIsAfterReturnsFalseWhenValueIsLess(): void
+    public function testIsBeforeReturnsFalseWhenValueIsGreater(): void
     {
-        /** @Given a smaller model version */
-        $smaller = ModelVersion::of(value: 1);
+        /** @Given a larger model version */
+        $larger = ModelVersion::of(value: 10);
 
-        /** @And a larger counterpart */
-        $larger = ModelVersion::of(value: 8);
+        /** @And a smaller counterpart */
+        $smaller = ModelVersion::of(value: 2);
 
-        /** @When checking if the smaller is after the larger */
-        $isAfter = $smaller->isAfter(other: $larger);
+        /** @When checking if the larger is before the smaller */
+        $isBefore = $larger->isBefore(other: $smaller);
 
         /** @Then the result is false */
-        self::assertFalse($isAfter);
-    }
-
-    public function testIsBeforeReturnsTrueWhenValueIsLess(): void
-    {
-        /** @Given a smaller model version */
-        $smaller = ModelVersion::of(value: 3);
-
-        /** @And a larger counterpart */
-        $larger = ModelVersion::of(value: 7);
-
-        /** @When checking if the smaller is before the larger */
-        $isBefore = $smaller->isBefore(other: $larger);
-
-        /** @Then the result is true */
-        self::assertTrue($isBefore);
+        self::assertFalse($isBefore);
     }
 
     public function testIsBeforeReturnsFalseWhenValuesAreEqual(): void
@@ -146,26 +171,11 @@ final class ModelVersionTest extends TestCase
         self::assertFalse($isBefore);
     }
 
-    public function testIsBeforeReturnsFalseWhenValueIsGreater(): void
+    public function testInvalidModelVersionMessageMentionsTheMinimumAllowed(): void
     {
-        /** @Given a larger model version */
-        $larger = ModelVersion::of(value: 10);
-
-        /** @And a smaller counterpart */
-        $smaller = ModelVersion::of(value: 2);
-
-        /** @When checking if the larger is before the smaller */
-        $isBefore = $larger->isBefore(other: $smaller);
-
-        /** @Then the result is false */
-        self::assertFalse($isBefore);
-    }
-
-    public function testOfRejectsNegativeValue(): void
-    {
-        /** @Then an InvalidModelVersion exception is thrown */
+        /** @Then the message mentions the minimum allowed value */
         $this->expectException(InvalidModelVersion::class);
-        $this->expectExceptionMessage('-1');
+        $this->expectExceptionMessage('greater than or equal to 0');
 
         /** @When constructing with a negative value */
         ModelVersion::of(value: -1);
@@ -175,16 +185,6 @@ final class ModelVersionTest extends TestCase
     {
         /** @Then InvalidModelVersion is caught by the standard exception type */
         $this->expectException(InvalidArgumentException::class);
-
-        /** @When constructing with a negative value */
-        ModelVersion::of(value: -1);
-    }
-
-    public function testInvalidModelVersionMessageMentionsTheMinimumAllowed(): void
-    {
-        /** @Then the message mentions the minimum allowed value */
-        $this->expectException(InvalidModelVersion::class);
-        $this->expectExceptionMessage('greater than or equal to 0');
 
         /** @When constructing with a negative value */
         ModelVersion::of(value: -1);

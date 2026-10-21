@@ -13,14 +13,13 @@ use TinyBlocks\BuildingBlocks\Exceptions\InvalidAggregateVersion;
 
 final class AggregateVersionTest extends TestCase
 {
-    public function testConstructorIsPrivate(): void
+    public function testFirstYieldsOne(): void
     {
-        /** @Given the AggregateVersion class constructor */
-        $constructor = new ReflectionMethod(AggregateVersion::class, '__construct');
+        /** @When requesting the first aggregate version */
+        $aggregateVersion = AggregateVersion::first();
 
-        /** @When inspecting its visibility */
-        /** @Then the constructor is private */
-        self::assertTrue($constructor->isPrivate());
+        /** @Then the value is one */
+        self::assertSame(1, $aggregateVersion->value);
     }
 
     public function testInitialYieldsZero(): void
@@ -32,34 +31,25 @@ final class AggregateVersionTest extends TestCase
         self::assertSame(0, $aggregateVersion->value);
     }
 
-    public function testFirstYieldsOne(): void
+    public function testConstructorIsPrivate(): void
     {
-        /** @When requesting the first aggregate version */
-        $aggregateVersion = AggregateVersion::first();
+        /** @Given the AggregateVersion class constructor */
+        $constructor = new ReflectionMethod(AggregateVersion::class, '__construct');
 
-        /** @Then the value is one */
-        self::assertSame(1, $aggregateVersion->value);
+        /** @When inspecting its visibility */
+        /** @Then the constructor is private */
+        self::assertTrue($constructor->isPrivate());
     }
 
-    public function testOfReturnsAggregateVersionWithGivenValue(): void
+    #[DataProvider('negativeValues')]
+    public function testOfRejectsNegativeValue(int $negativeValue): void
     {
-        /** @When requesting an aggregate version of that value */
-        $aggregateVersion = AggregateVersion::of(value: 5);
+        /** @Then an InvalidAggregateVersion exception carrying the invalid value is thrown */
+        $this->expectException(InvalidAggregateVersion::class);
+        $this->expectExceptionMessage((string)$negativeValue);
 
-        /** @Then the value matches */
-        self::assertSame(5, $aggregateVersion->value);
-    }
-
-    public function testNextYieldsTheFollowingValue(): void
-    {
-        /** @Given an aggregate version of 5 */
-        $aggregateVersion = AggregateVersion::of(value: 5);
-
-        /** @When advancing to the next */
-        $next = $aggregateVersion->next();
-
-        /** @Then the value is 6 */
-        self::assertSame(6, $next->value);
+        /** @When constructing with a negative value */
+        AggregateVersion::of(value: $negativeValue);
     }
 
     public function testNextDoesNotMutateTheSource(): void
@@ -74,31 +64,16 @@ final class AggregateVersionTest extends TestCase
         self::assertSame(5, $aggregateVersion->value);
     }
 
-    public function testValueReturnsTheBackingInteger(): void
+    public function testNextYieldsTheFollowingValue(): void
     {
         /** @Given an aggregate version of 5 */
         $aggregateVersion = AggregateVersion::of(value: 5);
 
-        /** @When retrieving its ordinal value */
-        $value = $aggregateVersion->value();
+        /** @When advancing to the next */
+        $next = $aggregateVersion->next();
 
-        /** @Then the backing integer is returned */
-        self::assertSame(5, $value);
-    }
-
-    public function testIsAfterReturnsTrueWhenStrictlyGreater(): void
-    {
-        /** @Given a larger aggregate version */
-        $larger = AggregateVersion::of(value: 10);
-
-        /** @And a smaller counterpart */
-        $smaller = AggregateVersion::of(value: 5);
-
-        /** @When checking if the larger is after the smaller */
-        $isAfter = $larger->isAfter(other: $smaller);
-
-        /** @Then the result is true */
-        self::assertTrue($isAfter);
+        /** @Then the value is 6 */
+        self::assertSame(6, $next->value);
     }
 
     public function testIsAfterReturnsFalseWhenEqual(): void
@@ -116,19 +91,31 @@ final class AggregateVersionTest extends TestCase
         self::assertFalse($isAfter);
     }
 
-    public function testIsAfterReturnsFalseWhenStrictlySmaller(): void
+    public function testEqualsReturnsTrueForSameValue(): void
     {
-        /** @Given a smaller aggregate version */
-        $smaller = AggregateVersion::of(value: 2);
+        /** @Given two aggregate versions with the same value */
+        $first = AggregateVersion::of(value: 7);
 
-        /** @And a larger counterpart */
-        $larger = AggregateVersion::of(value: 8);
+        /** @And a matching counterpart */
+        $second = AggregateVersion::of(value: 7);
 
-        /** @When checking if the smaller is after the larger */
-        $isAfter = $smaller->isAfter(other: $larger);
+        /** @When comparing them */
+        $areEqual = $first->equals(other: $second);
 
-        /** @Then the result is false */
-        self::assertFalse($isAfter);
+        /** @Then they are equal */
+        self::assertTrue($areEqual);
+    }
+
+    public function testValueReturnsTheBackingInteger(): void
+    {
+        /** @Given an aggregate version of 5 */
+        $aggregateVersion = AggregateVersion::of(value: 5);
+
+        /** @When retrieving its ordinal value */
+        $value = $aggregateVersion->value();
+
+        /** @Then the backing integer is returned */
+        self::assertSame(5, $value);
     }
 
     public function testIsBeforeReturnsTrueWhenValueIsLess(): void
@@ -146,19 +133,49 @@ final class AggregateVersionTest extends TestCase
         self::assertTrue($isBefore);
     }
 
-    public function testIsBeforeReturnsFalseWhenValuesAreEqual(): void
+    public function testEqualsReturnsFalseForDifferentValues(): void
     {
-        /** @Given two equal aggregate versions */
-        $first = AggregateVersion::of(value: 6);
+        /** @Given two aggregate versions with different values */
+        $first = AggregateVersion::of(value: 1);
 
-        /** @And a counterpart with the same value */
-        $second = AggregateVersion::of(value: 6);
+        /** @And a distinct counterpart */
+        $second = AggregateVersion::of(value: 2);
 
-        /** @When checking if one is strictly before the other */
-        $isBefore = $first->isBefore(other: $second);
+        /** @When comparing them */
+        $areEqual = $first->equals(other: $second);
+
+        /** @Then they are not equal */
+        self::assertFalse($areEqual);
+    }
+
+    public function testIsAfterReturnsTrueWhenStrictlyGreater(): void
+    {
+        /** @Given a larger aggregate version */
+        $larger = AggregateVersion::of(value: 10);
+
+        /** @And a smaller counterpart */
+        $smaller = AggregateVersion::of(value: 5);
+
+        /** @When checking if the larger is after the smaller */
+        $isAfter = $larger->isAfter(other: $smaller);
+
+        /** @Then the result is true */
+        self::assertTrue($isAfter);
+    }
+
+    public function testIsAfterReturnsFalseWhenStrictlySmaller(): void
+    {
+        /** @Given a smaller aggregate version */
+        $smaller = AggregateVersion::of(value: 2);
+
+        /** @And a larger counterpart */
+        $larger = AggregateVersion::of(value: 8);
+
+        /** @When checking if the smaller is after the larger */
+        $isAfter = $smaller->isAfter(other: $larger);
 
         /** @Then the result is false */
-        self::assertFalse($isBefore);
+        self::assertFalse($isAfter);
     }
 
     public function testIsBeforeReturnsFalseWhenValueIsGreater(): void
@@ -176,54 +193,28 @@ final class AggregateVersionTest extends TestCase
         self::assertFalse($isBefore);
     }
 
-    public function testEqualsReturnsTrueForSameValue(): void
+    public function testIsBeforeReturnsFalseWhenValuesAreEqual(): void
     {
-        /** @Given two aggregate versions with the same value */
-        $first = AggregateVersion::of(value: 7);
+        /** @Given two equal aggregate versions */
+        $first = AggregateVersion::of(value: 6);
 
-        /** @And a matching counterpart */
-        $second = AggregateVersion::of(value: 7);
+        /** @And a counterpart with the same value */
+        $second = AggregateVersion::of(value: 6);
 
-        /** @When comparing them */
-        $areEqual = $first->equals(other: $second);
+        /** @When checking if one is strictly before the other */
+        $isBefore = $first->isBefore(other: $second);
 
-        /** @Then they are equal */
-        self::assertTrue($areEqual);
+        /** @Then the result is false */
+        self::assertFalse($isBefore);
     }
 
-    public function testEqualsReturnsFalseForDifferentValues(): void
+    public function testOfReturnsAggregateVersionWithGivenValue(): void
     {
-        /** @Given two aggregate versions with different values */
-        $first = AggregateVersion::of(value: 1);
+        /** @When requesting an aggregate version of that value */
+        $aggregateVersion = AggregateVersion::of(value: 5);
 
-        /** @And a distinct counterpart */
-        $second = AggregateVersion::of(value: 2);
-
-        /** @When comparing them */
-        $areEqual = $first->equals(other: $second);
-
-        /** @Then they are not equal */
-        self::assertFalse($areEqual);
-    }
-
-    #[DataProvider('negativeValues')]
-    public function testOfRejectsNegativeValue(int $negativeValue): void
-    {
-        /** @Then an InvalidAggregateVersion exception carrying the invalid value is thrown */
-        $this->expectException(InvalidAggregateVersion::class);
-        $this->expectExceptionMessage((string)$negativeValue);
-
-        /** @When constructing with a negative value */
-        AggregateVersion::of(value: $negativeValue);
-    }
-
-    public function testInvalidAggregateVersionIsCatchableAsInvalidArgumentException(): void
-    {
-        /** @Then InvalidAggregateVersion is caught by the standard exception type */
-        $this->expectException(InvalidArgumentException::class);
-
-        /** @When constructing with a negative value */
-        AggregateVersion::of(value: -1);
+        /** @Then the value matches */
+        self::assertSame(5, $aggregateVersion->value);
     }
 
     public function testInvalidAggregateVersionMessageMentionsTheMinimumAllowed(): void
@@ -231,6 +222,15 @@ final class AggregateVersionTest extends TestCase
         /** @Then the message mentions the minimum allowed value */
         $this->expectException(InvalidAggregateVersion::class);
         $this->expectExceptionMessage('greater than or equal to 0');
+
+        /** @When constructing with a negative value */
+        AggregateVersion::of(value: -1);
+    }
+
+    public function testInvalidAggregateVersionIsCatchableAsInvalidArgumentException(): void
+    {
+        /** @Then InvalidAggregateVersion is caught by the standard exception type */
+        $this->expectException(InvalidArgumentException::class);
 
         /** @When constructing with a negative value */
         AggregateVersion::of(value: -1);

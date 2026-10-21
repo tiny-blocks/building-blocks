@@ -13,6 +13,26 @@ use TinyBlocks\BuildingBlocks\Event\EventRecords;
 
 final class EventRecordsTest extends TestCase
 {
+    public function testFirstElementRoundTripsTheAddedRecord(): void
+    {
+        /** @Given a freshly built event record */
+        $record = EventRecord::from(
+            event: new OrderPlaced(item: 'book'),
+            aggregateId: new OrderId(value: 'ord-1'),
+            aggregateType: 'Order',
+            aggregateVersion: AggregateVersion::first()
+        );
+
+        /** @And a collection carrying that record */
+        $records = EventRecords::createFromEmpty()->add($record);
+
+        /** @When retrieving the first element */
+        $first = $records->first();
+
+        /** @Then it matches the record added */
+        self::assertSame($record, $first);
+    }
+
     public function testCreateFromEmptyYieldsAnEmptyCollection(): void
     {
         /** @Given an empty EventRecords collection */
@@ -43,25 +63,5 @@ final class EventRecordsTest extends TestCase
 
         /** @Then the count is one */
         self::assertSame(1, $updated->count());
-    }
-
-    public function testFirstElementRoundTripsTheAddedRecord(): void
-    {
-        /** @Given a freshly built event record */
-        $record = EventRecord::from(
-            event: new OrderPlaced(item: 'book'),
-            aggregateId: new OrderId(value: 'ord-1'),
-            aggregateType: 'Order',
-            aggregateVersion: AggregateVersion::first()
-        );
-
-        /** @And a collection carrying that record */
-        $records = EventRecords::createFromEmpty()->add($record);
-
-        /** @When retrieving the first element */
-        $first = $records->first();
-
-        /** @Then it matches the record added */
-        self::assertSame($record, $first);
     }
 }

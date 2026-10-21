@@ -25,7 +25,7 @@ final class DomainEventBehaviorTest extends TestCase
     public function testOverriddenRevisionIsReturned(): void
     {
         /** @Given an event that overrides revision() */
-        $event = new ProductAddedV2(productId: 'prod-1', quantity: 2);
+        $event = new ProductAddedV2(quantity: 2, productId: 'prod-1');
 
         /** @When retrieving its revision */
         $revision = $event->revision();

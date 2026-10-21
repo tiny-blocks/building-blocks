@@ -60,16 +60,25 @@ interface EventSourcingRoot extends AggregateRoot
     public static function reconstitute(iterable $records, Identity $identity, ?Snapshot $snapshot = null): static;
 
     /**
-     * Returns the aggregate state to persist in a snapshot.
+     * Returns a fresh copy of the recorded events without clearing the buffer.
      *
-     * <p>The default implementation provided by {@see EventSourcingRootBehavior} returns all object
-     * properties except <code>recordedEvents</code> (transient buffer) and <code>aggregateVersion</code>
-     * (already a first-class field on the snapshot). Override to exclude infrastructure properties
-     * (loggers, caches, etc.) or to include only a curated subset of state.</p>
+     * <p>A non-destructive read. The returned collection is a copy, so external mutation does not leak
+     * into the aggregate's internal buffer, and the buffer is left intact for a later {@see pullEvents()} to
+     * drain.</p>
      *
-     * @return array<string, mixed> Keyed by property name.
+     * @return EventRecords A copy of the recorded events, safe to iterate and mutate.
      */
-    public function snapshotState(): array;
+    public function peekEvents(): EventRecords;
+
+    /**
+     * Returns the recorded events and clears the internal buffer.
+     *
+     * <p>Drains the buffer in a single step: the returned collection holds every event recorded since the
+     * last drain, and a subsequent call returns an empty collection until new events are recorded.</p>
+     *
+     * @return EventRecords The events recorded since the last drain.
+     */
+    public function pullEvents(): EventRecords;
 
     /**
      * Restores aggregate state from the given snapshot.
@@ -96,23 +105,14 @@ interface EventSourcingRoot extends AggregateRoot
     public function eventHandlers(): array;
 
     /**
-     * Returns a fresh copy of the recorded events without clearing the buffer.
+     * Returns the aggregate state to persist in a snapshot.
      *
-     * <p>A non-destructive read. The returned collection is a copy, so external mutation does not leak
-     * into the aggregate's internal buffer, and the buffer is left intact for a later {@see pullEvents()} to
-     * drain.</p>
+     * <p>The default implementation provided by {@see EventSourcingRootBehavior} returns all object
+     * properties except <code>recordedEvents</code> (transient buffer) and <code>aggregateVersion</code>
+     * (already a first-class field on the snapshot). Override to exclude infrastructure properties
+     * (loggers, caches, etc.) or to include only a curated subset of state.</p>
      *
-     * @return EventRecords A copy of the recorded events, safe to iterate and mutate.
+     * @return array<string, mixed> Keyed by property name.
      */
-    public function peekEvents(): EventRecords;
-
-    /**
-     * Returns the recorded events and clears the internal buffer.
-     *
-     * <p>Drains the buffer in a single step: the returned collection holds every event recorded since the
-     * last drain, and a subsequent call returns an empty collection until new events are recorded.</p>
-     *
-     * @return EventRecords The events recorded since the last drain.
-     */
-    public function pullEvents(): EventRecords;
+    public function snapshotState(): array;
 }

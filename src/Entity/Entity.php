@@ -50,18 +50,18 @@ interface Entity
     public function identityValue(): mixed;
 
     /**
-     * Tells whether this entity and the given one share the same identity.
-     *
-     * @param Entity $other The entity whose identity will be compared.
-     * @return bool True when both entities hold equal identities.
-     */
-    public function sameIdentityOf(Entity $other): bool;
-
-    /**
      * Tells whether the given Identity is equal to this entity's identity.
      *
      * @param Identity $other The identity to compare against.
      * @return bool True when the given identity equals this entity's identity.
      */
     public function identityEquals(Identity $other): bool;
+
+    /**
+     * Tells whether this entity and the given one share the same identity.
+     *
+     * @param Entity $other The entity whose identity will be compared.
+     * @return bool True when both entities hold equal identities.
+     */
+    public function sameIdentityOf(Entity $other): bool;
 }

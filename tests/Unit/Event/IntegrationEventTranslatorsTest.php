@@ -17,6 +17,26 @@ use TinyBlocks\BuildingBlocks\Event\IntegrationEventTranslators;
 
 final class IntegrationEventTranslatorsTest extends TestCase
 {
+    public function testFindForReturnsNullForEmptyCollection(): void
+    {
+        /** @Given an event record */
+        $record = EventRecord::from(
+            event: new OrderPlaced(item: 'book'),
+            aggregateId: new OrderId(value: 'ord-1'),
+            aggregateType: 'Order',
+            aggregateVersion: AggregateVersion::first()
+        );
+
+        /** @And an empty translator collection */
+        $translators = IntegrationEventTranslators::createFromEmpty();
+
+        /** @When looking up the translator for the record */
+        $result = $translators->findFor(record: $record);
+
+        /** @Then null is returned because the collection has no translators */
+        self::assertNull($result);
+    }
+
     public function testFindForReturnsFirstMatchingTranslatorAmongMultiple(): void
     {
         /** @Given an event record for an OrderPlaced event */
@@ -97,26 +117,6 @@ final class IntegrationEventTranslatorsTest extends TestCase
         $result = $translators->findFor(record: $record);
 
         /** @Then null is returned because no translator handles the record */
-        self::assertNull($result);
-    }
-
-    public function testFindForReturnsNullForEmptyCollection(): void
-    {
-        /** @Given an event record */
-        $record = EventRecord::from(
-            event: new OrderPlaced(item: 'book'),
-            aggregateId: new OrderId(value: 'ord-1'),
-            aggregateType: 'Order',
-            aggregateVersion: AggregateVersion::first()
-        );
-
-        /** @And an empty translator collection */
-        $translators = IntegrationEventTranslators::createFromEmpty();
-
-        /** @When looking up the translator for the record */
-        $result = $translators->findFor(record: $record);
-
-        /** @Then null is returned because the collection has no translators */
         self::assertNull($result);
     }
 }

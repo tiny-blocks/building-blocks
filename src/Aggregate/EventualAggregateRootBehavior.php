@@ -39,7 +39,7 @@ trait EventualAggregateRootBehavior
         AggregateVersion $aggregateVersion
     ): static {
         $aggregate = static::createBlank(identity: $identity);
-        AggregateReflection::hydrate(target: $aggregate, state: $aggregateState);
+        AggregateReflection::hydrate(state: $aggregateState, target: $aggregate);
         $aggregate->aggregateVersion = $aggregateVersion;
 
         return $aggregate;

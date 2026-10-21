@@ -21,9 +21,14 @@ final class ExplicitCart implements EventSourcingRoot
         $this->when(event: new ProductAdded(productId: $productId));
     }
 
-    public function addProductV2(string $productId, int $quantity): void
+    public function productIds(): array
     {
-        $this->when(event: new ProductAddedV2(productId: $productId, quantity: $quantity));
+        return $this->productIds;
+    }
+
+    public function addProductV2(int $quantity, string $productId): void
+    {
+        $this->when(event: new ProductAddedV2(quantity: $quantity, productId: $productId));
     }
 
     public function applySnapshot(Snapshot $snapshot): void
@@ -41,11 +46,6 @@ final class ExplicitCart implements EventSourcingRoot
                 $this->productIds[] = $event->productId;
             }
         ];
-    }
-
-    public function productIds(): array
-    {
-        return $this->productIds;
     }
 
     protected function identityProperty(): string

@@ -9,6 +9,15 @@ use TinyBlocks\BuildingBlocks\Upcast\DefaultValues;
 
 final class DefaultValuesTest extends TestCase
 {
+    public function testDefaultsMapContainsOnlyPrimitiveTypeKeys(): void
+    {
+        /** @When retrieving the primitive defaults map */
+        $defaults = DefaultValues::get();
+
+        /** @Then only primitive type keys are present */
+        self::assertSame(['int', 'bool', 'array', 'float', 'string'], array_keys($defaults));
+    }
+
     public function testDefaultsMapYieldsTheZeroValueForEachPrimitiveType(): void
     {
         /** @When retrieving the primitive defaults map */
@@ -20,14 +29,5 @@ final class DefaultValuesTest extends TestCase
         self::assertSame([], $defaults['array']);
         self::assertSame(0.0, $defaults['float']);
         self::assertSame('', $defaults['string']);
-    }
-
-    public function testDefaultsMapContainsOnlyPrimitiveTypeKeys(): void
-    {
-        /** @When retrieving the primitive defaults map */
-        $defaults = DefaultValues::get();
-
-        /** @Then only primitive type keys are present */
-        self::assertSame(['int', 'bool', 'array', 'float', 'string'], array_keys($defaults));
     }
 }
