@@ -44,7 +44,7 @@ final class SnapshotTest extends TestCase
     public function testFromAggregateCapturesAggregateVersion(): void
     {
         /** @Given a cart with two products added */
-        $cart = Cart::withProducts(cartId: new CartId(value: 'cart-2'), count: 2);
+        $cart = Cart::withProducts(count: 2, cartId: new CartId(value: 'cart-2'));
 
         /** @When taking a snapshot */
         $snapshot = Snapshot::fromAggregate(aggregate: $cart);

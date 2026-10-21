@@ -22,6 +22,15 @@ final class Order implements EventualAggregateRoot
     {
     }
 
+    public static function place(string $item, OrderId $orderId): Order
+    {
+        $order = new Order(id: $orderId);
+        $order->status = 'placed';
+        $order->pushEvent(event: new OrderPlaced(item: $item));
+
+        return $order;
+    }
+
     public static function reconstitutePartial(
         Identity $identity,
         array $aggregateState,
@@ -36,15 +45,6 @@ final class Order implements EventualAggregateRoot
         $order = new Order(id: $identity);
         $order->aggregateVersion = $aggregateVersion;
         $order->recordedEvents = EventRecords::createFromEmpty();
-
-        return $order;
-    }
-
-    public static function place(OrderId $orderId, string $item): Order
-    {
-        $order = new Order(id: $orderId);
-        $order->status = 'placed';
-        $order->pushEvent(event: new OrderPlaced(item: $item));
 
         return $order;
     }

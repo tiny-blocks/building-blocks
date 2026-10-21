@@ -18,7 +18,7 @@ final class Cart implements EventSourcingRoot
 
     private array $productIds = [];
 
-    public static function withProducts(CartId $cartId, int $count): Cart
+    public static function withProducts(int $count, CartId $cartId): Cart
     {
         $cart = Cart::blank(identity: $cartId);
         for ($index = 1; $index <= $count; $index++) {
@@ -33,25 +33,25 @@ final class Cart implements EventSourcingRoot
         $this->when(event: new ProductAdded(productId: $productId), occurredAt: $addedAt);
     }
 
+    public function productIds(): array
+    {
+        return $this->productIds;
+    }
+
+    public function modelVersion(): ModelVersion
+    {
+        return ModelVersion::of(value: 1);
+    }
+
     public function applySnapshot(Snapshot $snapshot): void
     {
         $state = $snapshot->aggregateState();
         $this->productIds = ($state['productIds'] ?? []);
     }
 
-    public function productIds(): array
-    {
-        return $this->productIds;
-    }
-
     protected function identityProperty(): string
     {
         return 'cartId';
-    }
-
-    public function modelVersion(): ModelVersion
-    {
-        return ModelVersion::of(value: 1);
     }
 
     protected function whenProductAdded(ProductAdded $event): void

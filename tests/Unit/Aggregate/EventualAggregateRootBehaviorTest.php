@@ -20,37 +20,10 @@ use TinyBlocks\BuildingBlocks\Utc;
 
 final class EventualAggregateRootBehaviorTest extends TestCase
 {
-    public function testAggregateVersionIsOneAfterSinglePlacement(): void
-    {
-        /** @Given an order that emits a single event on creation */
-        $order = Order::place(orderId: new OrderId(value: 'ord-1'), item: 'book');
-
-        /** @When retrieving the aggregate version */
-        $aggregateVersion = $order->aggregateVersion();
-
-        /** @Then the aggregate version is 1 */
-        self::assertSame(1, $aggregateVersion->value);
-    }
-
-    public function testAggregateVersionAdvancesOnEverySubsequentEvent(): void
-    {
-        /** @Given a placed order */
-        $order = Order::place(orderId: new OrderId(value: 'ord-2'), item: 'pen');
-
-        /** @And a shipping event emitted after placement */
-        $order->ship(carrier: 'DHL');
-
-        /** @When retrieving the aggregate version */
-        $aggregateVersion = $order->aggregateVersion();
-
-        /** @Then the aggregate version reflects every emitted event */
-        self::assertSame(2, $aggregateVersion->value);
-    }
-
     public function testRecordedEventsCountMatchesEmittedEvents(): void
     {
         /** @Given a placed order */
-        $order = Order::place(orderId: new OrderId(value: 'ord-3'), item: 'lamp');
+        $order = Order::place(item: 'lamp', orderId: new OrderId(value: 'ord-3'));
 
         /** @And a shipping event emitted after placement */
         $order->ship(carrier: 'FedEx');
@@ -62,13 +35,25 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         self::assertSame(2, $records->count());
     }
 
+    public function testAggregateVersionIsOneAfterSinglePlacement(): void
+    {
+        /** @Given an order that emits a single event on creation */
+        $order = Order::place(item: 'book', orderId: new OrderId(value: 'ord-1'));
+
+        /** @When retrieving the aggregate version */
+        $aggregateVersion = $order->aggregateVersion();
+
+        /** @Then the aggregate version is 1 */
+        self::assertSame(1, $aggregateVersion->value);
+    }
+
     public function testFirstRecordedEventCarriesPlacementMetadata(): void
     {
         /** @Given an identity for the placed order */
         $orderId = new OrderId(value: 'ord-4');
 
         /** @And a placed order emitting an OrderPlaced event */
-        $order = Order::place(orderId: $orderId, item: 'chair');
+        $order = Order::place(item: 'chair', orderId: $orderId);
 
         /** @When inspecting the first recorded record */
         $record = $order->peekEvents()->first();
@@ -86,7 +71,7 @@ final class EventualAggregateRootBehaviorTest extends TestCase
     public function testSecondRecordedEventCarriesShippingMetadata(): void
     {
         /** @Given a placed order */
-        $order = Order::place(orderId: new OrderId(value: 'ord-4b'), item: 'chair');
+        $order = Order::place(item: 'chair', orderId: new OrderId(value: 'ord-4b'));
 
         /** @And a shipping event emitted after placement */
         $order->ship(carrier: 'UPS');
@@ -101,25 +86,76 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         self::assertSame('UPS', $record->event->carrier);
     }
 
-    public function testPushEventWhenOccurrenceInstantGivenThenRecordCarriesThatInstant(): void
+    public function testOrderReconstituteRejectsForeignIdentityType(): void
+    {
+        /** @Given an identity belonging to a foreign aggregate type */
+        $foreignIdentity = new ReservationId(value: 'res-1');
+
+        /** @Then an exception indicating the wrong identity type should be thrown */
+        $this->expectException(InvalidArgumentException::class);
+
+        /** @When reconstituting an Order with a non-OrderId identity */
+        Order::reconstitutePartial(
+            identity: $foreignIdentity,
+            aggregateState: [],
+            aggregateVersion: AggregateVersion::of(value: 1)
+        );
+    }
+
+    public function testReconstituteSilentlyIgnoresUnknownStateKeys(): void
+    {
+        /** @Given an identity for the aggregate */
+        $reservationId = new ReservationId(value: 'res-1');
+
+        /** @When reconstituting with a state map carrying a key absent from the aggregate */
+        $reservation = Reservation::reconstitutePartial(
+            identity: $reservationId,
+            aggregateState: ['status' => 'pending', 'unknownProperty' => 'value'],
+            aggregateVersion: AggregateVersion::of(value: 5)
+        );
+
+        /** @Then no exception is raised and the known identity is still restored */
+        self::assertTrue($reservation->identity()->equals(other: $reservationId));
+    }
+
+    public function testOrderReconstituteRestoresVersionForNextEvent(): void
+    {
+        /** @Given an Order reconstituted at version 9 */
+        $order = Order::reconstitutePartial(
+            identity: new OrderId(value: 'ord-rec-1'),
+            aggregateState: [],
+            aggregateVersion: AggregateVersion::of(value: 9)
+        );
+
+        /** @And a shipping event emitted on the reconstituted instance */
+        $order->ship(carrier: 'DHL');
+
+        /** @When inspecting the recorded event */
+        $record = $order->peekEvents()->first();
+
+        /** @Then the event carries version 10 */
+        self::assertSame(10, $record->aggregateVersion->value);
+    }
+
+    public function testAggregateVersionAdvancesOnEverySubsequentEvent(): void
     {
         /** @Given a placed order */
-        $order = Order::place(orderId: new OrderId(value: 'ord-6'), item: 'desk');
+        $order = Order::place(item: 'pen', orderId: new OrderId(value: 'ord-2'));
 
-        /** @And an occurrence instant read from a clock */
-        $shippedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
+        /** @And a shipping event emitted after placement */
+        $order->ship(carrier: 'DHL');
 
-        /** @When shipping the order at that instant */
-        $order->ship(carrier: 'UPS', shippedAt: $shippedAt);
+        /** @When retrieving the aggregate version */
+        $aggregateVersion = $order->aggregateVersion();
 
-        /** @Then the recorded shipping event carries the given instant */
-        self::assertEquals($shippedAt, $order->peekEvents()->last()->occurredAt);
+        /** @Then the aggregate version reflects every emitted event */
+        self::assertSame(2, $aggregateVersion->value);
     }
 
     public function testRecordedEventsReturnsIndependentCopyOnEachCall(): void
     {
         /** @Given an order with one recorded event */
-        $order = Order::place(orderId: new OrderId(value: 'ord-6'), item: 'mug');
+        $order = Order::place(item: 'mug', orderId: new OrderId(value: 'ord-6'));
 
         /** @And an external mutation applied to the first retrieved copy */
         $order->peekEvents()->merge(other: $order->peekEvents());
@@ -134,7 +170,7 @@ final class EventualAggregateRootBehaviorTest extends TestCase
     public function testBufferAccumulatesAcrossOperationsWithoutClearing(): void
     {
         /** @Given a placed order whose events are still buffered */
-        $order = Order::place(orderId: new OrderId(value: 'ord-7'), item: 'bottle');
+        $order = Order::place(item: 'bottle', orderId: new OrderId(value: 'ord-7'));
 
         /** @And the buffer drained without clearing, simulating a save that reads but does not reset */
         $firstBatch = $order->peekEvents();
@@ -145,22 +181,6 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         /** @Then the buffer accumulates events from both operations */
         self::assertSame(2, $order->peekEvents()->count());
         self::assertSame(1, $firstBatch->count());
-    }
-
-    public function testReconstituteRestoresIdentityWhenNoStateIsProvided(): void
-    {
-        /** @Given an identity to assign to the reconstituted aggregate */
-        $reservationId = new ReservationId(value: 'res-1');
-
-        /** @When reconstituting via the trait default with no state */
-        $reservation = Reservation::reconstitutePartial(
-            identity: $reservationId,
-            aggregateState: [],
-            aggregateVersion: AggregateVersion::of(value: 5)
-        );
-
-        /** @Then the identity is restored on the reconstituted aggregate */
-        self::assertTrue($reservation->identity()->equals(other: $reservationId));
     }
 
     public function testReconstituteInitializesEmptyRecordedEventsBuffer(): void
@@ -195,6 +215,22 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         self::assertSame(6, $reservation->peekEvents()->first()->aggregateVersion->value);
     }
 
+    public function testReconstituteRestoresIdentityWhenNoStateIsProvided(): void
+    {
+        /** @Given an identity to assign to the reconstituted aggregate */
+        $reservationId = new ReservationId(value: 'res-1');
+
+        /** @When reconstituting via the trait default with no state */
+        $reservation = Reservation::reconstitutePartial(
+            identity: $reservationId,
+            aggregateState: [],
+            aggregateVersion: AggregateVersion::of(value: 5)
+        );
+
+        /** @Then the identity is restored on the reconstituted aggregate */
+        self::assertTrue($reservation->identity()->equals(other: $reservationId));
+    }
+
     public function testReconstituteHydratesStateSoCommandsBehaveCorrectly(): void
     {
         /** @Given a reservation reconstituted in confirmed status */
@@ -211,75 +247,51 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         $reservation->confirm();
     }
 
-    public function testReconstituteSilentlyIgnoresUnknownStateKeys(): void
+    public function testReconstituteStrictWhenPropertyHasDefaultThenNotFlagged(): void
     {
-        /** @Given an identity for the aggregate */
+        /** @Given an identity for an Order whose status property carries a default */
+        $orderId = new OrderId(value: 'ord-strict-1');
+
+        /** @When reconstituting the Order strictly with no state */
+        $order = Order::reconstituteStrict(
+            identity: $orderId,
+            aggregateState: [],
+            aggregateVersion: AggregateVersion::of(value: 1)
+        );
+
+        /** @Then the defaulted status does not trigger an incomplete-state failure */
+        self::assertTrue($order->identity()->equals(other: $orderId));
+    }
+
+    public function testReconstituteStrictWhenUnknownKeyProvidedThenStillSucceeds(): void
+    {
+        /** @Given an identity for an aggregate reconstituted with an unknown state key */
         $reservationId = new ReservationId(value: 'res-1');
 
-        /** @When reconstituting with a state map carrying a key absent from the aggregate */
-        $reservation = Reservation::reconstitutePartial(
+        /** @When reconstituting strictly with all required state plus an unknown key */
+        $reservation = Reservation::reconstituteStrict(
             identity: $reservationId,
             aggregateState: ['status' => 'pending', 'unknownProperty' => 'value'],
             aggregateVersion: AggregateVersion::of(value: 5)
         );
 
-        /** @Then no exception is raised and the known identity is still restored */
+        /** @Then the unknown key is ignored and reconstitution succeeds */
         self::assertTrue($reservation->identity()->equals(other: $reservationId));
     }
 
-    public function testOrderReconstituteRejectsForeignIdentityType(): void
+    public function testPushEventWhenOccurrenceInstantGivenThenRecordCarriesThatInstant(): void
     {
-        /** @Given an identity belonging to a foreign aggregate type */
-        $foreignIdentity = new ReservationId(value: 'res-1');
+        /** @Given a placed order */
+        $order = Order::place(item: 'desk', orderId: new OrderId(value: 'ord-6'));
 
-        /** @Then an exception indicating the wrong identity type should be thrown */
-        $this->expectException(InvalidArgumentException::class);
+        /** @And an occurrence instant read from a clock */
+        $shippedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
 
-        /** @When reconstituting an Order with a non-OrderId identity */
-        Order::reconstitutePartial(
-            identity: $foreignIdentity,
-            aggregateState: [],
-            aggregateVersion: AggregateVersion::of(value: 1)
-        );
-    }
+        /** @When shipping the order at that instant */
+        $order->ship(carrier: 'UPS', shippedAt: $shippedAt);
 
-    public function testOrderReconstituteRestoresVersionForNextEvent(): void
-    {
-        /** @Given an Order reconstituted at version 9 */
-        $order = Order::reconstitutePartial(
-            identity: new OrderId(value: 'ord-rec-1'),
-            aggregateState: [],
-            aggregateVersion: AggregateVersion::of(value: 9)
-        );
-
-        /** @And a shipping event emitted on the reconstituted instance */
-        $order->ship(carrier: 'DHL');
-
-        /** @When inspecting the recorded event */
-        $record = $order->peekEvents()->first();
-
-        /** @Then the event carries version 10 */
-        self::assertSame(10, $record->aggregateVersion->value);
-    }
-
-    public function testReconstituteStrictWhenAllRequiredStateProvidedThenMatchesLenientResult(): void
-    {
-        /** @Given a reservation reconstituted leniently with all required state */
-        $lenient = Reservation::reconstitutePartial(
-            identity: new ReservationId(value: 'res-1'),
-            aggregateState: ['status' => 'pending'],
-            aggregateVersion: AggregateVersion::of(value: 5)
-        );
-
-        /** @When reconstituting the same reservation strictly */
-        $strict = Reservation::reconstituteStrict(
-            identity: new ReservationId(value: 'res-1'),
-            aggregateState: ['status' => 'pending'],
-            aggregateVersion: AggregateVersion::of(value: 5)
-        );
-
-        /** @Then the strict result equals the lenient result */
-        self::assertEquals($lenient, $strict);
+        /** @Then the recorded shipping event carries the given instant */
+        self::assertEquals($shippedAt, $order->peekEvents()->last()->occurredAt);
     }
 
     public function testReconstituteStrictWhenRequiredPropertyOmittedThenNamesItIncomplete(): void
@@ -303,36 +315,24 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         }
     }
 
-    public function testReconstituteStrictWhenUnknownKeyProvidedThenStillSucceeds(): void
+    public function testReconstituteStrictWhenAllRequiredStateProvidedThenMatchesLenientResult(): void
     {
-        /** @Given an identity for an aggregate reconstituted with an unknown state key */
-        $reservationId = new ReservationId(value: 'res-1');
-
-        /** @When reconstituting strictly with all required state plus an unknown key */
-        $reservation = Reservation::reconstituteStrict(
-            identity: $reservationId,
-            aggregateState: ['status' => 'pending', 'unknownProperty' => 'value'],
+        /** @Given a reservation reconstituted leniently with all required state */
+        $lenient = Reservation::reconstitutePartial(
+            identity: new ReservationId(value: 'res-1'),
+            aggregateState: ['status' => 'pending'],
             aggregateVersion: AggregateVersion::of(value: 5)
         );
 
-        /** @Then the unknown key is ignored and reconstitution succeeds */
-        self::assertTrue($reservation->identity()->equals(other: $reservationId));
-    }
-
-    public function testReconstituteStrictWhenPropertyHasDefaultThenNotFlagged(): void
-    {
-        /** @Given an identity for an Order whose status property carries a default */
-        $orderId = new OrderId(value: 'ord-strict-1');
-
-        /** @When reconstituting the Order strictly with no state */
-        $order = Order::reconstituteStrict(
-            identity: $orderId,
-            aggregateState: [],
-            aggregateVersion: AggregateVersion::of(value: 1)
+        /** @When reconstituting the same reservation strictly */
+        $strict = Reservation::reconstituteStrict(
+            identity: new ReservationId(value: 'res-1'),
+            aggregateState: ['status' => 'pending'],
+            aggregateVersion: AggregateVersion::of(value: 5)
         );
 
-        /** @Then the defaulted status does not trigger an incomplete-state failure */
-        self::assertTrue($order->identity()->equals(other: $orderId));
+        /** @Then the strict result equals the lenient result */
+        self::assertEquals($lenient, $strict);
     }
 
     public function testReconstituteStrictWhenMultipleRequiredPropertiesMissingThenNamesThemAll(): void

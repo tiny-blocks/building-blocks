@@ -14,18 +14,6 @@ trait EventualAggregateRootBehavior
 {
     use AggregateRootBehavior;
 
-    public static function reconstitutePartial(
-        Identity $identity,
-        array $aggregateState,
-        AggregateVersion $aggregateVersion
-    ): static {
-        $aggregate = static::createBlank(identity: $identity);
-        AggregateReflection::hydrate(target: $aggregate, state: $aggregateState);
-        $aggregate->aggregateVersion = $aggregateVersion;
-
-        return $aggregate;
-    }
-
     public static function reconstituteStrict(
         Identity $identity,
         array $aggregateState,
@@ -42,6 +30,18 @@ trait EventualAggregateRootBehavior
         if ($missingProperties !== []) {
             throw new IncompleteAggregateState(className: static::class, propertyNames: $missingProperties);
         }
+
+        return $aggregate;
+    }
+
+    public static function reconstitutePartial(
+        Identity $identity,
+        array $aggregateState,
+        AggregateVersion $aggregateVersion
+    ): static {
+        $aggregate = static::createBlank(identity: $identity);
+        AggregateReflection::hydrate(target: $aggregate, state: $aggregateState);
+        $aggregate->aggregateVersion = $aggregateVersion;
 
         return $aggregate;
     }

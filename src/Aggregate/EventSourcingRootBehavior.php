@@ -43,20 +43,6 @@ trait EventSourcingRootBehavior
         return $aggregate;
     }
 
-    public function snapshotState(): array
-    {
-        /** @var array<string, mixed> $state */
-        $state = get_object_vars($this);
-        unset($state['recordedEvents'], $state['aggregateVersion']);
-
-        return $state;
-    }
-
-    public function eventHandlers(): array
-    {
-        return [];
-    }
-
     /**
      * Records a domain event and applies it to the aggregate's state in one step.
      *
@@ -99,5 +85,19 @@ trait EventSourcingRootBehavior
 
         $this->{$methodName}($record->event);
         $this->aggregateVersion = $record->aggregateVersion;
+    }
+
+    public function eventHandlers(): array
+    {
+        return [];
+    }
+
+    public function snapshotState(): array
+    {
+        /** @var array<string, mixed> $state */
+        $state = get_object_vars($this);
+        unset($state['recordedEvents'], $state['aggregateVersion']);
+
+        return $state;
     }
 }
