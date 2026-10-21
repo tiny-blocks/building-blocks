@@ -129,8 +129,9 @@ differently named property override `identityProperty()`.
 
 #### Identity access on entities
 
-* `identity()`, `identityValue()`, `sameIdentityOf()`, `identityEquals()`: provided by `EntityBehavior` for any entity
-  that declares its identity property.
+* `identity()`, `identityName()`, `identityValue()`, `sameIdentityOf()`, `identityEquals()`: provided by
+  `EntityBehavior` for any entity that declares its identity property. `identityName()` throws `MissingIdentityProperty`
+  when the entity has no property with the name returned by `identityProperty()`.
 
   ```php
   <?php
@@ -254,7 +255,7 @@ control, and a `ModelVersion` for schema evolution of the aggregate type.
 Both infrastructure fields the trait carries, `recordedEvents` and `aggregateVersion`, are marked `#[Transient]`, so a
 mapper that serializes aggregate state leaves them out of the portable form with no per-call configuration. A
 state-based repository then persists only the domain state, while the recorded events are drained to the outbox and the
-version are tracked by the concurrency guard.
+version is tracked by the concurrency guard.
 
 ### Domain events with transactional outbox
 
@@ -420,10 +421,11 @@ drained instance.
   ```
 
   The record takes its occurrence timestamp from the event's `occurredAt()`, falling back to `Utc::now()` when the
-  event carries none. A command method that receives the instant from its caller passes it into the event.
+  event carries none. A command method that receives the instant from its caller passes it into the event. Since
+  `pushEvent()` is protected, the call lives inside a command method of the aggregate.
 
   ```php
-  $order->pushEvent(event: new OrderShipped(carrier: $carrier, shippedAt: $shippedAt));
+  $this->pushEvent(event: new OrderShipped(carrier: $carrier, shippedAt: $shippedAt));
   ```
 
 #### Draining events
@@ -491,8 +493,10 @@ drained instance.
 
   Aggregates may override `reconstitutePartial()` to enforce a concrete identity type at the entry point.
   `reconstituteStrict()` delegates to it, so the override is honored on both paths. The static signature cannot narrow
-  the parameter type per LSP, so the override keeps `Identity` in the signature and guards with
-  `instanceof` inside:
+  the parameter type per LSP, so the override keeps `Identity` in the signature and guards with `instanceof` inside.
+  The override also keeps the parameter names, because `reconstituteStrict()` calls it with named arguments
+  (`identity:`, `aggregateState:`, `aggregateVersion:`), and it initializes the recorded-events buffer, because
+  `reconstituteStrict()` flags every uninitialized property, the trait's own included:
 
   ```php
   <?php
@@ -504,6 +508,7 @@ drained instance.
   use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
   use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRootBehavior;
   use TinyBlocks\BuildingBlocks\Entity\Identity;
+  use TinyBlocks\BuildingBlocks\Event\EventRecords;
 
   final class Order implements EventualAggregateRoot
   {
@@ -514,18 +519,19 @@ drained instance.
       }
 
       public static function reconstitutePartial(
-          Identity $orderId,
+          Identity $identity,
           array $aggregateState,
           AggregateVersion $aggregateVersion
       ): static {
-          if (!$orderId instanceof OrderId) {
+          if (!$identity instanceof OrderId) {
               $template = 'Expected identity of type <%s>, got <%s>.';
 
-              throw new InvalidArgumentException(message: sprintf($template, OrderId::class, $orderId::class));
+              throw new InvalidArgumentException(message: sprintf($template, OrderId::class, $identity::class));
           }
 
-          $order = new Order(id: $orderId);
+          $order = new Order(id: $identity);
           $order->aggregateVersion = $aggregateVersion;
+          $order->recordedEvents = EventRecords::createFromEmpty();
 
           return $order;
       }
@@ -723,8 +729,11 @@ idempotent. The revision and event type are derived from the integration event, 
 
 #### Applying events to state
 
-* `when()`: protected method that records the event and immediately applies it to state by dispatching to a
-  `when<EventShortName>` method by reflection.
+* `when()`: protected method that records the event and immediately applies it to state. Without registered
+  `eventHandlers()`, it dispatches to the method named `when` followed by the event's `eventType()` value, exactly as
+  returned (`sprintf('when%s', $eventType)`). An event whose `eventType()` returns `'ProductAdded'` is applied by
+  `whenProductAdded()`, whatever its class is named. When that method does not exist, `EventHandlerMethodNotFound` is
+  thrown. The same dispatch applies when `reconstitute()` replays recorded events.
 
   ```php
   <?php
@@ -761,9 +770,10 @@ idempotent. The revision and event type are derived from the integration event, 
 
   Like `pushEvent()`, `when()` stamps the record with the event's `occurredAt()`, falling back to `Utc::now()`.
 
-* `eventHandlers()`: explicit registration. Returns a map of `class-string<DomainEvent>` to callable. When the map is
-  non-empty, the trait dispatches through it instead of using the implicit `when<X>` convention. Use this when handler
-  names should not follow the convention or when static analysis on dispatch is desired.
+* `eventHandlers()`: explicit registration. Returns a map of `class-string<DomainEvent>` to callable, keyed by the
+  event's class. When the map is non-empty, the trait dispatches through it instead of using the implicit
+  `when<EventType>` convention, and an event whose class is not in the map throws `NoEventHandlerRegistered`. Use this
+  when handler names should not follow the convention or when static analysis on dispatch is desired.
 
   ```php
   <?php
@@ -772,6 +782,7 @@ idempotent. The revision and event type are derived from the integration event, 
 
   use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
   use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRootBehavior;
+  use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
   final class ExplicitCart implements EventSourcingRoot
   {
@@ -785,6 +796,11 @@ idempotent. The revision and event type are derived from the integration event, 
           return [
               ProductAdded::class => $this->onProductAdded(...)
           ];
+      }
+
+      public function applySnapshot(Snapshot $snapshot): void
+      {
+          $this->productIds = $snapshot->aggregateState()['productIds'] ?? [];
       }
 
       private function onProductAdded(ProductAdded $event): void
@@ -843,6 +859,7 @@ property except `recordedEvents` and `aggregateVersion` (which are tracked separ
   use Psr\Log\LoggerInterface;
   use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
   use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRootBehavior;
+  use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
 
   final class CartWithLogger implements EventSourcingRoot
   {
@@ -855,6 +872,11 @@ property except `recordedEvents` and `aggregateVersion` (which are tracked separ
       public function snapshotState(): array
       {
           return ['id' => $this->id, 'productIds' => $this->productIds];
+      }
+
+      public function applySnapshot(Snapshot $snapshot): void
+      {
+          $this->productIds = $snapshot->aggregateState()['productIds'] ?? [];
       }
   }
   ```
@@ -905,7 +927,8 @@ property except `recordedEvents` and `aggregateVersion` (which are tracked separ
 #### Built-in conditions
 
 * `SnapshotCondition`: strategy for deciding whether a snapshot should be taken at a given point.
-* `SnapshotEvery::events(count: N)`: ready-made condition that triggers every `N` events (skipping version `0`).
+* `SnapshotEvery::events(count: N)`: ready-made condition that triggers every `N` events (skipping version `0`). A
+  count below `1` throws `InvalidSnapshotCount`.
 * `SnapshotNever::create()`: condition that never triggers, useful in tests and when snapshotting is explicitly
   disabled.
 
@@ -935,7 +958,8 @@ property except `recordedEvents` and `aggregateVersion` (which are tracked separ
   {
       public function shouldSnapshot(EventSourcingRoot $aggregate): bool
       {
-          # domain-specific logic
+          # Domain-specific logic goes here.
+          return $aggregate->aggregateVersion()->value % 50 === 0;
       }
   }
   ```
@@ -948,8 +972,9 @@ Upcasters migrate serialized events across schema changes without touching the e
 
 * `Upcaster`: transforms one `(type, revision)` pair forward by one step. Returns the event unchanged when the type or
   revision does not match.
-* `SingleUpcasterBehavior`: binds the upcaster to a specific migration via three class constants and delegates the
-  payload transformation to an abstract `doUpcast()` method.
+* `SingleUpcasterBehavior`: binds the upcaster to a specific migration via three class constants
+  (`EXPECTED_EVENT_TYPE`, `FROM_REVISION`, `TO_REVISION`) and delegates the payload transformation to the abstract
+  `rewrite(array $payload): array` method.
 
   ```php
   <?php
@@ -967,9 +992,9 @@ Upcasters migrate serialized events across schema changes without touching the e
       private const int FROM_REVISION = 1;
       private const int TO_REVISION = 2;
 
-      protected function doUpcast(array $data): array
+      protected function rewrite(array $payload): array
       {
-          return [...$data, 'quantity' => 1];
+          return [...$payload, 'quantity' => 1];
       }
   }
   ```
@@ -1022,10 +1047,12 @@ Upcasters migrate serialized events across schema changes without touching the e
 
 ### 01. Why is `DomainEvent` close to a marker interface?
 
-A domain event is a fact about something that happened in the domain. The contract carries only `revision()` so the
-library can route schema migrations through upcasters. Everything else (aggregate identity, aggregate version, aggregate
-type, occurrence timestamp) is envelope metadata that belongs to `EventRecord`. Keeping the event itself minimal
-prevents infrastructure concerns from leaking into the domain model.
+A domain event is a fact about something that happened in the domain. The contract carries only what describes the fact
+itself: `eventType()`, its stable type identifier, `revision()`, its schema revision, so the library can route schema
+migrations through upcasters, and `occurredAt()`, the instant it happened when the caller knows it. Everything else
+(aggregate identity, aggregate version, aggregate type) is envelope metadata that belongs to `EventRecord`, which also
+carries the resolved occurrence timestamp. Keeping the event itself minimal prevents infrastructure concerns from
+leaking into the domain model.
 
 > Vaughn Vernon, *Implementing Domain-Driven Design* (Addison-Wesley, 2013), Chapter 8, "Domain Events".
 
@@ -1128,19 +1155,19 @@ truth to branch on when older shapes show up in storage.
 > Lock".
 > Greg Young, *Versioning in an Event Sourced System* (Leanpub, 2017).
 
-### 11. Why are `reconstitutePartial()` and
+### 11. Why are `reconstitutePartial()` and `reconstituteStrict()` static on the interface?
 
-`reconstituteStrict()` static on the interface even though PHP's polymorphism for static methods is limited?
+PHP's polymorphism for static methods is limited, yet both factories are declared on the interface.
 
 The interface declaration documents the contract: every `EventualAggregateRoot` exposes two static factories with the
 shape `(Identity, array, AggregateVersion): static` that repositories can call. PHP does not dispatch static calls
 through interfaces at runtime, so the consumer always names the concrete class (`Order::reconstituteStrict(...)`,
 `Reservation::reconstitutePartial(...)`). The interface still earns its keep: it forces aggregates to expose the
 factories, the trait default provides both for free (`reconstituteStrict` delegates to `reconstitutePartial`), and
-overrides remain bound to the declared signature. The parameter name is free per LSP, so an override of
-`reconstitutePartial` can rename `$identity` to `$orderId` for readability, but the type must remain `Identity`,
-narrowing to a concrete identity class would break LSP. Concrete types are enforced inside the override with
-`instanceof`.
+overrides remain bound to the declared signature. The type must remain `Identity`, since narrowing to a concrete
+identity class would break LSP. The parameter names must stay as declared too: `reconstituteStrict()` calls
+`reconstitutePartial()` with named arguments, so an override that renamed `$identity` would fail with an unknown named
+parameter error. Concrete types are enforced inside the override with `instanceof`.
 
 > Barbara Liskov and Jeannette Wing, *A Behavioral Notion of Subtyping* (ACM TOPLAS, 1994).
 
