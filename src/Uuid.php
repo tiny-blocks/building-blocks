@@ -22,7 +22,7 @@ final readonly class Uuid implements ValueObject
     }
 
     /**
-     * Creates an Uuid from its canonical string representation.
+     * Creates a Uuid from its canonical string representation.
      *
      * @param string $value The canonical string representation of a UUID.
      * @return Uuid The created identifier.
@@ -38,7 +38,7 @@ final readonly class Uuid implements ValueObject
     }
 
     /**
-     * Creates an Uuid from its canonical version 7 string representation.
+     * Creates a Uuid from its canonical version 7 string representation.
      *
      * @param string $value The canonical string representation of a version 7 UUID.
      * @return Uuid The created identifier.
@@ -60,7 +60,7 @@ final readonly class Uuid implements ValueObject
     }
 
     /**
-     * Creates an Uuid generated as a version 7 (Unix Epoch time) identifier.
+     * Creates a Uuid generated as a version 7 (Unix Epoch time) identifier.
      *
      * @return Uuid The generated version 7 identifier.
      */
