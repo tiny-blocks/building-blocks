@@ -13,8 +13,10 @@ use TinyBlocks\BuildingBlocks\Exceptions\MissingIdentityProperty;
  * across distinct representations and lifecycle transitions. Two entities are equal when their
  * identities are equal, regardless of attribute differences.</p>
  *
- * <p>Concrete entities implement the protected <code>identityProperty()</code> method returning the property
- * that holds their {@see Identity}. The default behavior uses reflection to resolve and compare it.</p>
+ * <p>The protected <code>identityProperty()</code> method names the property that holds the entity's
+ * {@see Identity}. {@see EntityBehavior} defaults it to <code>'id'</code>, so concrete entities override it
+ * only when the property has another name. The default behavior reads that property and compares
+ * identities by value.</p>
  *
  * @see Eric Evans, <em>Domain-Driven Design: Tackling Complexity in the Heart of Software</em>
  *      (Addison-Wesley, 2003), Chapter 5 "Entities (a.k.a. Reference Objects)".

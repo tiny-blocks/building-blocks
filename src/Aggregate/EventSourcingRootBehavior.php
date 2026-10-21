@@ -46,11 +46,14 @@ trait EventSourcingRootBehavior
      * Records a domain event and applies it to the aggregate's state in one step.
      *
      * <p>Invoked by command methods of an event-sourced aggregate. Advances the aggregate version,
-     * builds the {@see EventRecord}, applies it via the registered handler or the implicit
-     * <code>whenEventShortName</code> convention, and appends the record to the recorded-events
-     * collection. Not part of the public surface.</p>
+     * builds the {@see EventRecord}, applies it via the registered handler or, without registered
+     * handlers, via the method named <code>when</code> followed by the event's <code>eventType()</code>
+     * value, and appends the record to the recorded-events collection. Not part of the public surface.</p>
      *
      * @param DomainEvent $event The event to record and apply.
+     * @throws NoEventHandlerRegistered If handlers are registered and none is keyed by the event's class.
+     * @throws EventHandlerMethodNotFound If no handlers are registered and the aggregate has no method named
+     *                                    <code>when</code> followed by the event's <code>eventType()</code>.
      */
     protected function when(DomainEvent $event): void
     {

@@ -7,7 +7,7 @@ namespace TinyBlocks\BuildingBlocks\Event;
 use TinyBlocks\BuildingBlocks\Utc;
 
 /**
- * Marker interface for records of something that happened in the domain.
+ * Contract for records of something that happened in the domain.
  *
  * <p>A Domain Event carries only the data describing <strong>what happened</strong> in the domain. It is
  * a fact that domain experts care about. The following concerns explicitly do <strong>not</strong> belong
@@ -16,7 +16,7 @@ use TinyBlocks\BuildingBlocks\Utc;
  * <ul>
  *   <li><strong>Aggregate identity</strong>: added by the aggregate when building the {@see EventRecord}.</li>
  *   <li><strong>Aggregate type</strong>: derived from the aggregate's class name into the envelope.</li>
- *   <li><strong>Sequence number</strong>: assigned by the aggregate into the envelope.</li>
+ *   <li><strong>Aggregate version</strong>: assigned by the aggregate into the envelope.</li>
  *   <li><strong>Serialization to storage</strong>: responsibility of outbox writers and consumer
  *       deserializers, both infrastructure concerns outside this library.</li>
  * </ul>
