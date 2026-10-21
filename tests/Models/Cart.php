@@ -8,6 +8,7 @@ use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventSourcingRootBehavior;
 use TinyBlocks\BuildingBlocks\Aggregate\ModelVersion;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
+use TinyBlocks\BuildingBlocks\Utc;
 
 final class Cart implements EventSourcingRoot
 {
@@ -27,9 +28,9 @@ final class Cart implements EventSourcingRoot
         return $cart;
     }
 
-    public function addProduct(string $productId): void
+    public function addProduct(string $productId, ?Utc $addedAt = null): void
     {
-        $this->when(event: new ProductAdded(productId: $productId));
+        $this->when(event: new ProductAdded(productId: $productId), occurredAt: $addedAt);
     }
 
     public function applySnapshot(Snapshot $snapshot): void

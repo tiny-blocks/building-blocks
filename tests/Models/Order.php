@@ -10,6 +10,7 @@ use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRoot;
 use TinyBlocks\BuildingBlocks\Aggregate\EventualAggregateRootBehavior;
 use TinyBlocks\BuildingBlocks\Entity\Identity;
 use TinyBlocks\BuildingBlocks\Event\EventRecords;
+use TinyBlocks\BuildingBlocks\Utc;
 
 final class Order implements EventualAggregateRoot
 {
@@ -48,9 +49,9 @@ final class Order implements EventualAggregateRoot
         return $order;
     }
 
-    public function ship(string $carrier): void
+    public function ship(string $carrier, ?Utc $shippedAt = null): void
     {
         $this->status = 'shipped';
-        $this->pushEvent(event: new OrderShipped(carrier: $carrier));
+        $this->pushEvent(event: new OrderShipped(carrier: $carrier), occurredAt: $shippedAt);
     }
 }

@@ -16,6 +16,7 @@ use Test\TinyBlocks\BuildingBlocks\Models\Reservation;
 use Test\TinyBlocks\BuildingBlocks\Models\ReservationId;
 use TinyBlocks\BuildingBlocks\Aggregate\AggregateVersion;
 use TinyBlocks\BuildingBlocks\Exceptions\IncompleteAggregateState;
+use TinyBlocks\BuildingBlocks\Utc;
 
 final class EventualAggregateRootBehaviorTest extends TestCase
 {
@@ -98,6 +99,21 @@ final class EventualAggregateRootBehaviorTest extends TestCase
         self::assertSame(2, $record->aggregateVersion->value);
         self::assertInstanceOf(OrderShipped::class, $record->event);
         self::assertSame('UPS', $record->event->carrier);
+    }
+
+    public function testPushEventWhenOccurrenceInstantGivenThenRecordCarriesThatInstant(): void
+    {
+        /** @Given a placed order */
+        $order = Order::place(orderId: new OrderId(value: 'ord-6'), item: 'desk');
+
+        /** @And an occurrence instant read from a clock */
+        $shippedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
+
+        /** @When shipping the order at that instant */
+        $order->ship(carrier: 'UPS', shippedAt: $shippedAt);
+
+        /** @Then the recorded shipping event carries the given instant */
+        self::assertEquals($shippedAt, $order->peekEvents()->last()->occurredAt);
     }
 
     public function testRecordedEventsReturnsIndependentCopyOnEachCall(): void

@@ -15,6 +15,7 @@ use Test\TinyBlocks\BuildingBlocks\Models\OrderId;
 use Test\TinyBlocks\BuildingBlocks\Models\OrderPlaced;
 use Test\TinyBlocks\BuildingBlocks\Models\ProductAdded;
 use TinyBlocks\BuildingBlocks\Snapshot\Snapshot;
+use TinyBlocks\BuildingBlocks\Utc;
 
 final class EventSourcingRootBehaviorTest extends TestCase
 {
@@ -127,6 +128,21 @@ final class EventSourcingRootBehaviorTest extends TestCase
         self::assertInstanceOf(ProductAdded::class, $record->event);
         self::assertSame($cartId, $record->aggregateId);
         self::assertSame('prod-abc', $record->event->productId);
+    }
+
+    public function testDomainOperationWhenOccurrenceInstantGivenThenRecordCarriesThatInstant(): void
+    {
+        /** @Given a blank cart */
+        $cart = Cart::blank(identity: new CartId(value: 'cart-occurred-at'));
+
+        /** @And an occurrence instant read from a clock */
+        $addedAt = Utc::fromIso8601(value: '2026-03-01T12:00:00+00:00');
+
+        /** @When adding a product at that instant */
+        $cart->addProduct(productId: 'prod-1', addedAt: $addedAt);
+
+        /** @Then the recorded event carries the given instant */
+        self::assertEquals($addedAt, $cart->peekEvents()->first()->occurredAt);
     }
 
     public function testReconstituteReplaysEventsInOrder(): void

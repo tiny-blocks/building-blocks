@@ -364,6 +364,14 @@ drained instance.
   }
   ```
 
+  The optional `occurredAt` sets the occurrence timestamp on the record, so a command method can take the instant from
+  the caller (typically read from a clock) instead of the aggregate reading the clock itself. When omitted, it defaults
+  to `Utc::now()`.
+
+  ```php
+  $order->pushEvent(event: new OrderPlaced(item: $item), occurredAt: $placedAt);
+  ```
+
 #### Draining events
 
 * `pullEvents()`: drains the buffer. Returns the events recorded since the last drain and clears the buffer, so a
@@ -694,6 +702,13 @@ idempotent. The revision and event type are derived from the integration event, 
           $this->productIds[] = $event->productId;
       }
   }
+  ```
+
+  Like `pushEvent()`, `when()` accepts an optional `occurredAt` for the occurrence timestamp on the record, defaulting
+  to `Utc::now()` when omitted.
+
+  ```php
+  $this->when(event: new ProductAdded(productId: $productId), occurredAt: $addedAt);
   ```
 
 * `eventHandlers()`: explicit registration. Returns a map of `class-string<DomainEvent>` to callable. When the map is
