@@ -576,6 +576,21 @@ Every envelope carries `$id`, `$event`, `$revision`, `$eventType`, `$occurredAt`
   );
   ```
 
+  `Utc` keeps microsecond precision. `Utc::now()` reads the clock down to the microsecond, `Utc::fromIso8601()` accepts
+  a value with or without a fractional second and normalizes it to UTC, and `toIso8601()` always returns six fractional
+  digits, so the value round-trips through its ISO 8601 form and two values are equal only when they denote the same
+  microsecond.
+
+  ```php
+  Utc::fromIso8601(value: '2026-02-17T07:30:00.123456-03:00')->toIso8601(); # 2026-02-17T10:30:00.123456+00:00
+  Utc::fromIso8601(value: '2026-02-17T10:30:00+00:00')->toIso8601();        # 2026-02-17T10:30:00.000000+00:00
+  ```
+
+  **Upgrading from 6.x.** Up to 6.x, `Utc` cut every value to the second, so `toIso8601()` returned no fractional part
+  and two values within the same second were equal. From 7.0, `toIso8601()` returns microseconds and equality compares
+  the microsecond. Code that parses `toIso8601()` with a format that has no fractional second, or that compares a `Utc`
+  read back from a store holding seconds with one taken from the clock, must account for the fractional part.
+
 ### Integration events and the Anti-Corruption Layer
 
 `DomainEvent` describes facts that happened inside the bounded context and evolves freely with the internal model.
