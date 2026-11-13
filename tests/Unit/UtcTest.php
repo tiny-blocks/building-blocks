@@ -10,13 +10,22 @@ use TinyBlocks\BuildingBlocks\Utc;
 
 final class UtcTest extends TestCase
 {
+    public function testNowThenExposesMicrosecondPrecision(): void
+    {
+        /** @When the current moment is created and read back */
+        $iso = Utc::now()->toIso8601();
+
+        /** @Then it is exposed in UTC with six fractional digits */
+        self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}\+00:00$/', $iso);
+    }
+
     public function testEqualsWhenSamePointInTimeThenReturnsTrue(): void
     {
         /** @Given a moment in UTC */
-        $utc = Utc::fromIso8601(value: '2026-02-17T10:30:00+00:00');
+        $utc = Utc::fromIso8601(value: '2026-02-17T10:30:00.123456+00:00');
 
-        /** @And another moment at the same point in time */
-        $other = Utc::fromIso8601(value: '2026-02-17T10:30:00+00:00');
+        /** @And another moment at the same point in time, written with another offset */
+        $other = Utc::fromIso8601(value: '2026-02-17T07:30:00.123456-03:00');
 
         /** @When comparing them */
         $areEqual = $utc->equals(other: $other);
@@ -59,7 +68,34 @@ final class UtcTest extends TestCase
         Utc::fromIso8601(value: 'not-a-valid-instant');
     }
 
-    public function testFromIso8601WhenGivenIso8601StringThenExposesSecondPrecision(): void
+    public function testFromIso8601WhenValueHasMicrosecondsThenKeepsThemInUtc(): void
+    {
+        /** @Given an ISO 8601 date-time string with microseconds and a non-UTC offset */
+        $value = '2026-02-17T07:30:00.123456-03:00';
+
+        /** @When a moment is created from it and read back */
+        $iso = Utc::fromIso8601(value: $value)->toIso8601();
+
+        /** @Then it is exposed in UTC with the microseconds kept */
+        self::assertSame('2026-02-17T10:30:00.123456+00:00', $iso);
+    }
+
+    public function testEqualsWhenSameSecondButDifferentMicrosecondsThenReturnsFalse(): void
+    {
+        /** @Given a moment in UTC */
+        $utc = Utc::fromIso8601(value: '2026-02-17T10:30:00.123456+00:00');
+
+        /** @And another moment within the same second, one microsecond later */
+        $other = Utc::fromIso8601(value: '2026-02-17T10:30:00.123457+00:00');
+
+        /** @When comparing them */
+        $areEqual = $utc->equals(other: $other);
+
+        /** @Then they are not equal */
+        self::assertFalse($areEqual);
+    }
+
+    public function testFromIso8601WhenValueHasNoFractionalSecondThenExposesZeroMicroseconds(): void
     {
         /** @Given an ISO 8601 date-time string without sub-second precision */
         $value = '2026-02-17T10:30:00+00:00';
@@ -67,7 +103,7 @@ final class UtcTest extends TestCase
         /** @When a moment is created from it and read back */
         $iso = Utc::fromIso8601(value: $value)->toIso8601();
 
-        /** @Then it is exposed in UTC with second precision */
-        self::assertSame('2026-02-17T10:30:00+00:00', $iso);
+        /** @Then it is exposed in UTC with microsecond precision */
+        self::assertSame('2026-02-17T10:30:00.000000+00:00', $iso);
     }
 }

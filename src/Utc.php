@@ -7,14 +7,16 @@ namespace TinyBlocks\BuildingBlocks;
 use TinyBlocks\BuildingBlocks\Exceptions\InvalidUtc;
 use TinyBlocks\Time\Exceptions\InvalidInstant;
 use TinyBlocks\Time\Instant;
+use TinyBlocks\Time\Precision;
 use TinyBlocks\Vo\ValueObject;
 use TinyBlocks\Vo\ValueObjectBehavior;
 
 /**
  * A single point on the timeline in UTC, compared by the moment it represents.
  *
- * <p>Normalized to UTC with second precision so that two values representing the same point in
- * time are equal regardless of how they were created.</p>
+ * <p>Normalized to UTC with microsecond precision so that two values representing the same point in
+ * time are equal regardless of how they were created, and so that the ISO 8601 representation
+ * round-trips without losing the sub-second part.</p>
  */
 final readonly class Utc implements ValueObject
 {
@@ -27,33 +29,34 @@ final readonly class Utc implements ValueObject
     /**
      * Creates a UTC representing the current moment.
      *
-     * @return Utc The current moment in UTC.
+     * @return Utc The current moment in UTC, with microsecond precision.
      */
     public static function now(): Utc
     {
-        return new Utc(iso: Instant::now()->toIso8601());
+        return new Utc(iso: Instant::now()->toIso8601(precision: Precision::Microseconds));
     }
 
     /**
      * Creates a UTC from an ISO 8601 representation.
      *
-     * @param string $value An ISO 8601 date-time string (e.g. 2026-02-17T10:30:00+00:00).
-     * @return Utc The created moment in UTC.
+     * @param string $value An ISO 8601 date-time string, with or without a fractional second
+     *                      (e.g. 2026-02-17T10:30:00+00:00 or 2026-02-17T10:30:00.123456+00:00).
+     * @return Utc The created moment in UTC, with microsecond precision.
      * @throws InvalidUtc If the value is not a valid ISO 8601 instant.
      */
     public static function fromIso8601(string $value): Utc
     {
         try {
-            return new Utc(iso: Instant::fromString(value: $value)->toIso8601());
+            return new Utc(iso: Instant::fromString(value: $value)->toIso8601(precision: Precision::Microseconds));
         } catch (InvalidInstant) {
             throw new InvalidUtc(value: $value);
         }
     }
 
     /**
-     * Returns the UTC as an ISO 8601 string with second precision.
+     * Returns the UTC as an ISO 8601 string with microsecond precision.
      *
-     * @return string The ISO 8601 representation in UTC.
+     * @return string The ISO 8601 representation in UTC (e.g. 2026-02-17T10:30:00.123456+00:00).
      */
     public function toIso8601(): string
     {
